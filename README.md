@@ -14,7 +14,7 @@
 $ go get https://github.com/djedjethai/kfk-schemaregistry
 ```
 
-## Use the Record-Name-Strategy for with protobuf
+## Use the Record-Name-Strategy with protobuf(currently implemented only for protobuf)
 (see in ./examples, also see there an implementation of the Topic-Name-Strategy)
 ```
 package main
@@ -302,6 +302,19 @@ func (c *srConsumer) Close() {
 
 
 ``` 
+
+## Contributing
+
+Welcome to **kfk-schemaregistry**! We appreciate your interest in contributing to this project. Whether you're an experienced developer or just getting started, there are several ways you can help improve and expand this library.
+
+### Tasks to Contribute
+
+Here are some tasks that you can work on:
+
+- **Add DeserializeRecordName and DeserializeIntoRecordName methods for JSON Schema and Avro:**
+  DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
+  DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
+
 
 License
 =======
