@@ -1,7 +1,21 @@
-package main
+# Fork from Confluent-kafka-go Schema-registry(https://github.com/confluentinc/confluent-kafka-go/tree/master/schemaregistry)
 
-// from Nina Pakshina
-// https://medium.com/@ninucium/is-using-kafka-with-schema-registry-and-protobuf-worth-it-part-1-1c4a9995a5d3
+** kfk-schemaregistry is a fork from Confluent's Golang client as it does not implement the protobuf Record-Name-Strategy(and they do not merge the PR)** . So this fork would be benefic only for those in need of this fonctionality
+
+** kfk-schemaregistry fix a bug in the schema-registry's cache lrucache.go (again, as they do not merge the PR)** . Note that without that cache's fix the cache never delete the last lruElements entry when the cache capacity is full(means that the allocate capacity of the cache won't be respected)   
+
+** Note that the main drawback if you use confluent-kafka-go ** is that you will have twice the code of the schema-registry(as you got it by default when you install github.com/confluentinc/confluent-kafka-go/v2/kafka). ** However if you use a different client, then you can take advantage of this fork to interact with the schema-registry** . 
+
+## Install
+
+``` bash
+$ go get https://github.com/djedjethai/kfk-schemaregistry
+```
+
+## Use the Record-Name-Strategy for with protobuf
+(see in ./examples, also see there an implementation of the Topic-Name-Strategy)
+```
+package main
 
 import (
 	"fmt"
@@ -13,7 +27,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/protobuf"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"log"
 	"time"
@@ -30,6 +44,8 @@ const (
 	consumerGroupID              = "test-consumer"
 	defaultSessionTimeout        = 6000
 	noTimeout                    = -1
+	subjectPerson                = "test.v1.Person"
+	subjectAddress               = "another.v1.Address"
 )
 
 func main() {
@@ -57,8 +73,18 @@ func producer() {
 		Age:  23,
 	}
 
+	city := &pb.Address{
+		Street: "myStreet",
+		City:   "Bangkok",
+	}
+
 	for {
-		offset, err := producer.ProduceMessage(msg, topic)
+		offset, err := producer.ProduceMessage(msg, topic, subjectPerson)
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
+
+		offset, err = producer.ProduceMessage(city, topic, subjectAddress)
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -70,7 +96,7 @@ func producer() {
 
 // SRProducer interface
 type SRProducer interface {
-	ProduceMessage(msg proto.Message, topic string) (int64, error)
+	ProduceMessage(msg proto.Message, topic, subject string) (int64, error)
 	Close()
 }
 
@@ -100,11 +126,11 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 }
 
 // ProduceMessage sends serialized message to kafka using schema registry
-func (p *srProducer) ProduceMessage(msg proto.Message, topic string) (int64, error) {
+func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) (int64, error) {
 	kafkaChan := make(chan kafka.Event)
 	defer close(kafkaChan)
 
-	payload, err := p.serializer.Serialize(topic, msg)
+	payload, err := p.serializer.Serialize(subject, msg)
 	if err != nil {
 		return nullOffset, err
 	}
@@ -136,6 +162,10 @@ func (p *srProducer) Close() {
 * CONSUMER
 * ===============================
 **/
+
+var person = &pb.Person{}
+var address = &pb.Address{}
+
 func consumer() {
 	consumer, err := NewConsumer(kafkaURL, srURL)
 	if err != nil {
@@ -143,8 +173,21 @@ func consumer() {
 	}
 
 	personType := (&pb.Person{}).ProtoReflect().Type()
+	addressType := (&pb.Address{}).ProtoReflect().Type()
 
-	err = consumer.Run(personType, topic)
+	// // declare the events' subjects name expected
+	// // works with DeserializeRecordName only, will fail with DeserializeIntoRecordName
+	// subjects := make(map[string]interface{})
+	// subjects[subjectPerson] = struct{}{}
+	// subjects[subjectAddress] = struct{}{}
+
+	// Deserialize into a struct
+	// works with DeserializeRecordName and DeserializeIntoRecordName
+	subjects := make(map[string]interface{})
+	subjects[subjectPerson] = person
+	subjects[subjectAddress] = address
+
+	err = consumer.Run([]protoreflect.MessageType{personType, addressType}, topic, subjects)
 	if err != nil {
 		log.Println("ConsumerRun Error: ", err)
 	}
@@ -153,7 +196,7 @@ func consumer() {
 
 // SRConsumer interface
 type SRConsumer interface {
-	Run(messagesType protoreflect.MessageType, topic string) error
+	Run(messagesType []protoreflect.MessageType, topic string, subjects map[string]interface{}) error
 	Close()
 }
 
@@ -195,13 +238,18 @@ func (c *srConsumer) RegisterMessage(messageType protoreflect.MessageType) error
 }
 
 // Run consumer
-func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
+func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string, subjects map[string]interface{}) error {
 	if err := c.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 		return err
 	}
 
-	if err := c.deserializer.ProtoRegistry.RegisterMessage(messageType); err != nil {
-		return err
+	if len(messagesType) > 0 {
+		for _, mt := range messagesType {
+			if err := c.deserializer.ProtoRegistry.RegisterMessage(mt); err != nil {
+
+				return err
+			}
+		}
 	}
 
 	for {
@@ -210,20 +258,26 @@ func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) err
 			return err
 		}
 
-		// get a msg of type interface{}
-		msg, err := c.deserializer.Deserialize(topic, kafkaMsg.Value)
+		msg, err := c.deserializer.DeserializeRecordName(subjects, kafkaMsg.Value)
 		if err != nil {
 			return err
 		}
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
-		// use deserializer.DeserializeInto to get a struct back
-		person := &pb.Person{}
-		err = c.deserializer.DeserializeInto(topic, kafkaMsg.Value, person)
+		// // could instanciate a second map(or overwrite the previous one)
+		// subjects := make(map[string]interface{})
+		// person := &pb.Person{}
+		// subjects[subjectPerson] = person
+		// address := &pb.Address{}
+		// subjects[subjectAddress] = address
+
+		err = c.deserializer.DeserializeIntoRecordName(subjects, kafkaMsg.Value)
 		if err != nil {
 			return err
 		}
-		fmt.Println("See the struct: ", person.Name, " - ", person.Age)
+
+		fmt.Println("person: ", person.Name, " - ", person.Age)
+		fmt.Println("address: ", address.City, " - ", address.Street)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err
@@ -243,3 +297,11 @@ func (c *srConsumer) Close() {
 	}
 	c.deserializer.Close()
 }
+
+
+``` 
+
+License
+=======
+
+[Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0)
