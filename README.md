@@ -1,4 +1,4 @@
-# Fork from Confluent-kafka-go Schema-registry(https://github.com/confluentinc/confluent-kafka-go/tree/master/schemaregistry)
+# Fork from Confluent-kafka-go Schema-registry
 
 ** kfk-schemaregistry is a fork from Confluent's Golang client as it does not implement the protobuf Record-Name-Strategy(and they do not merge the PR)** . So this fork would be benefic only for those in need of this fonctionality
 
