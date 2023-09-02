@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/protobuf"
+	"github.com/djedjethai/kfk-schemaregistry/serde"
+	"github.com/djedjethai/kfk-schemaregistry/serde/protobuf"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
