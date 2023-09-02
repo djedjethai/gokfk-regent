@@ -1,9 +1,9 @@
 # Fork from Confluent-kafka-go Schema-registry
 
 
-**kfk-schemaregistry is a fork of Confluent's Golang client. It includes the implementation of the protobuf Record-Name-Strategy**, a feature that is currently not present in the original Confluent client, as they have not merged the related pull request (PR). This fork is primarily beneficial for users who specifically require this functionality
+**kfk-schemaregistry is a fork of Confluent's Golang client. It includes the implementation of the protobuf Record-Name-Strategy**, a feature that is currently not present in the original Confluent client, as they have not merged the related pull request (PR). This fork is primarily beneficial for users who specifically require this functionality.
 
-**kfk-schemaregistry addresses a critical issue within the schema-registry's cache management in lrucache.go**. This fork addresses the issue due to the non-merging of a related pull request (PR) in the original project. Notably, without this cache fix, the cache fails to remove the last lruElements entry when it reaches its capacity limit, resulting in the cache's allocated capacity not being respected."
+**kfk-schemaregistry addresses a critical issue within the schema-registry's cache management in lrucache.go**. This fork addresses the issue due to the non-merging of a related pull request (PR) in the original project. Notably, without this cache fix, the cache fails to remove the last lruElements entry when it reaches its capacity limit, resulting in the cache's allocated capacity not being respected.
 
 **Please note that when you use confluent-kafka-go, you end up with twice the code due to the schema-registry client**, which comes bundled with the official package by default. **However, if you opt for a different Kafka client, you can leverage this fork (kfk-schemaregistry) to seamlessly interact with the schema-registry.**
 
