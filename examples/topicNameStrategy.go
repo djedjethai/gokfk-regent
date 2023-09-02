@@ -4,15 +4,15 @@ package main
 // https://medium.com/@ninucium/is-using-kafka-with-schema-registry-and-protobuf-worth-it-part-1-1c4a9995a5d3
 
 import (
+	pb "examples/api/v1/proto"
 	"fmt"
-	pb "implementPackage/api/v1/proto"
 	"os"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/protobuf"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
+	"github.com/djedjethai/kfk-schemaregistry/serde"
+	"github.com/djedjethai/kfk-schemaregistry/serde/protobuf"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"log"
