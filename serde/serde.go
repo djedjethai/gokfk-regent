@@ -143,7 +143,6 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 	}
 	if autoRegister {
 
-		fmt.Println("In serde - GetID --------------------- Register: ", subject)
 		id, err = s.Client.Register(subject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
@@ -213,8 +212,6 @@ func (s *BaseDeserializer) GetSchema(subject string, payload []byte) (schemaregi
 	if subject != "" {
 		var err error
 		subject, err = s.SubjectNameStrategy(subject, s.SerdeType, info)
-		fmt.Println("serde.go - GetSchema --- errr: ", err)
-		fmt.Println("serde.go - GetSchema --- subject: ", subject)
 		if err != nil {
 			return info, err
 		}

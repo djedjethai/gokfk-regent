@@ -179,8 +179,6 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		References: metadata.References,
 	}
 
-	fmt.Println("In protobuf.go - Serializer - before get the id - topic +++: ", topic)
-	fmt.Println("In protobuf.go - Serializer - before get the id - protoMsg +++: ", protoMsg)
 	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
 	id, err := s.GetID(topic, protoMsg, info)
@@ -192,7 +190,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("In protobuf.go - Serializer - see the id: ", id)
+
 	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
 	if err != nil {
 		return nil, err

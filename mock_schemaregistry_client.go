@@ -71,7 +71,6 @@ var _ Client = new(mockclient)
 // Register registers Schema aliased with subject
 func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
 
-	fmt.Println("In mockclient - Register - subject: ", subject)
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
 		return -1, err
@@ -82,12 +81,10 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	}
 	c.schemaToIdCacheLock.RLock()
 	idCacheEntryVal, ok := c.schemaToIdCache[cacheKey]
-	fmt.Println("In mockclient - Register - idCacheEntryVal: ", idCacheEntryVal)
 	if idCacheEntryVal.softDeleted {
 		ok = false
 	}
 	c.schemaToIdCacheLock.RUnlock()
-	fmt.Println("In mockclient - Register - idCacheEntryVal ok: ", ok)
 	if ok {
 		return idCacheEntryVal.id, nil
 	}
@@ -108,11 +105,9 @@ func (c *mockclient) getIDFromRegistry(subject string, schema SchemaInfo) (int, 
 	var id = -1
 	// NOTE herererere !!! pb registration schema
 
-	fmt.Println("In mockclient - Register - getIDFromRegistry +++++++++++++++++++++++++")
 	c.idToSchemaCacheLock.RLock()
 	for key, value := range c.idToSchemaCache {
 
-		fmt.Println("In mockclient - Register - getIDFromRegistry -  key: ", key, " Value ", value)
 		if key.subject == subject && schemasEqual(*value, schema) {
 			id = key.id
 			break
@@ -192,8 +187,6 @@ func (c *mockclient) generateVersion(subject string, schema SchemaInfo) error {
 // GetBySubjectAndID returns the schema identified by id
 // Returns Schema object on success
 func (c *mockclient) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, err error) {
-	fmt.Println("In mock_registry_client - GetBySubjectAndID subject ", subject)
-	fmt.Println("In mock_registry_client - GetBySubjectAndID id ", id)
 
 	// if subject == ""
 	// get all the cache entries and check with only the id
@@ -220,7 +213,6 @@ func (c *mockclient) GetBySubjectAndID(subject string, id int) (schema SchemaInf
 	info, ok := c.idToSchemaCache[cacheKey]
 	c.idToSchemaCacheLock.RUnlock()
 	if ok {
-		fmt.Println("In mock_registry_client - GetBySubjectAndID ok ", *info)
 		return *info, nil
 	}
 	posErr := url.Error{
