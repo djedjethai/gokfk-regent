@@ -1,10 +1,12 @@
 # Fork from Confluent-kafka-go Schema-registry
 
-** kfk-schemaregistry is a fork from Confluent's Golang client as it does not implement the protobuf Record-Name-Strategy(and they do not merge the PR)** . So this fork would be benefic only for those in need of this fonctionality
 
-** kfk-schemaregistry fix a bug in the schema-registry's cache lrucache.go (again, as they do not merge the PR)** . Note that without that cache's fix the cache never delete the last lruElements entry when the cache capacity is full(means that the allocate capacity of the cache won't be respected)   
+**kfk-schemaregistry is a fork of Confluent's Golang client. It includes the implementation of the protobuf Record-Name-Strategy**, a feature that is currently not present in the original Confluent client, as they have not merged the related pull request (PR). This fork is primarily beneficial for users who specifically require this functionality
 
-** Note that the main drawback if you use confluent-kafka-go ** is that you will have twice the code of the schema-registry(as you got it by default when you install github.com/confluentinc/confluent-kafka-go/v2/kafka). ** However if you use a different client, then you can take advantage of this fork to interact with the schema-registry** . 
+**kfk-schemaregistry addresses a critical issue within the schema-registry's cache management in lrucache.go**. This fork addresses the issue due to the non-merging of a related pull request (PR) in the original project. Notably, without this cache fix, the cache fails to remove the last lruElements entry when it reaches its capacity limit, resulting in the cache's allocated capacity not being respected."
+
+**Please note that when you use confluent-kafka-go, you end up with twice the code due to the schema-registry client**, which comes bundled with the official package by default. **However, if you opt for a different Kafka client, you can leverage this fork (kfk-schemaregistry) to seamlessly interact with the schema-registry.**
+
 
 ## Install
 
