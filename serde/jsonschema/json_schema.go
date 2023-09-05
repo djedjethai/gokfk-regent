@@ -22,6 +22,7 @@ package jsonschema
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"strings"
 
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
@@ -123,6 +124,9 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
+
+	log.Println("json_schema.go - Deserialize - info: ", info)
+
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
@@ -143,15 +147,23 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
+
+	log.Println("json_schema.go - Deserialize - subject: ", subject)
+
 	msg, err := s.MessageFactory(subject, "")
 	if err != nil {
 		return nil, err
 	}
+
 	err = json.Unmarshal(payload[5:], msg)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
+}
+
+func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+	return nil, nil
 }
 
 // DeserializeInto implements deserialization of generic data from JSON to the given object
@@ -183,6 +195,10 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
 	return nil
 }
 
