@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
 
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 )
@@ -104,7 +105,18 @@ func (s *BaseSerializer) ConfigureSerializer(client schemaregistry.Client, serde
 	s.Client = client
 	s.Conf = conf
 	s.SerdeType = serdeType
-	s.SubjectNameStrategy = TopicNameStrategy
+
+	if len(conf.SubjectNameStrategy) > 0 {
+		switch conf.SubjectNameStrategy {
+		case "recordNameStrategy":
+			s.SubjectNameStrategy = RecordNameStrategy
+		case "topicRecordNameStrategy":
+			// s.SubjectNameStrategy = TopicNameStrategy
+		}
+	} else {
+		s.SubjectNameStrategy = TopicNameStrategy
+	}
+
 	return nil
 }
 
@@ -132,6 +144,18 @@ func TopicNameStrategy(topic string, serdeType Type, schema schemaregistry.Schem
 	return topic + suffix, nil
 }
 
+// TopicNameStrategy creates a subject name by appending -[key|value] to the topic name.
+func RecordNameStrategy(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
+
+	log.Println("seeeeeeeeeeeeee the schema bytes: ", schema.SchemaFullyQualifiedName)
+
+	suffix := "-value"
+	if serdeType == KeySerde {
+		suffix = "-key"
+	}
+	return schema.SchemaFullyQualifiedName + suffix, nil
+}
+
 // GetID returns a schema ID for the given schema
 func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistry.SchemaInfo) (int, error) {
 	autoRegister := s.Conf.AutoRegisterSchemas
@@ -144,8 +168,12 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 	if err != nil {
 		return -1, err
 	}
+
+	log.Println("serde.go - GetID - subject: ", subject)
+
 	if autoRegister {
 
+		log.Println("serde.go - GetID - autoRegister: ", info)
 		id, err = s.Client.Register(subject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
@@ -155,6 +183,9 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 		if err != nil {
 			return -1, err
 		}
+
+		log.Println("serde.go - GetID - UseSchemaID: ", info)
+
 		id, err = s.Client.GetID(subject, info, false)
 		if err != nil {
 			return -1, err
@@ -167,16 +198,20 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 		if err != nil {
 			return -1, err
 		}
+		log.Println("serde.go - GetID - UseLatest(metadata): ", metadata)
 		info = schemaregistry.SchemaInfo{
 			Schema:     metadata.Schema,
 			SchemaType: metadata.SchemaType,
 			References: metadata.References,
 		}
+		log.Println("serde.go - GetID - UseLatest: ", info)
 		id, err = s.Client.GetID(subject, info, false)
 		if err != nil {
 			return -1, err
 		}
 	} else {
+
+		log.Println("serde.go - GetID - else   : ", info)
 		id, err = s.Client.GetID(subject, info, normalizeSchema)
 		if err != nil {
 			return -1, err

@@ -66,6 +66,8 @@ type api struct {
 
 // newRequest returns new Confluent Schema Registry API request */
 func newRequest(method string, endpoint string, body interface{}, arguments ...interface{}) *api {
+
+	// log.Println("rest_service.go - handleRequest - request.body: ", body)
 	return &api{
 		method:    method,
 		endpoint:  endpoint,

@@ -20,9 +20,12 @@
 package jsonschema
 
 import (
+	// "encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
+	"reflect"
 	"strings"
 
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
@@ -58,20 +61,124 @@ func NewSerializer(client schemaregistry.Client, serdeType serde.Type, conf *Ser
 	return s, nil
 }
 
+// // Serialize implements serialization of generic data to JSON
+// func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
+// 	if msg == nil {
+// 		return nil, nil
+// 	}
+//
+// 	jschema := jsonschema.Reflect(msg)
+//
+// 	raw, err := json.Marshal(jschema)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	log.Println("json_schema.go - Serialize - see jschema: ", string(raw))
+//
+// 	info := schemaregistry.SchemaInfo{
+// 		Schema:     string(raw),
+// 		SchemaType: "JSON",
+// 	}
+// 	id, err := s.GetID(topic, msg, info)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	raw, err = json.Marshal(msg)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if s.validate {
+// 		// Need to unmarshal to pure interface
+// 		var obj interface{}
+// 		err = json.Unmarshal(raw, &obj)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		jschema, err := toJSONSchema(s.Client, info)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		err = jschema.Validate(obj)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	payload, err := s.WriteBytes(id, raw)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return payload, nil
+// }
+
+func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQualifiedName string) interface{} {
+	// Use reflection to create a new instance of the struct
+	v := reflect.ValueOf(someStruct)
+	t := v.Type()
+	if t.Kind() != reflect.Struct {
+		panic("Input is not a struct")
+	}
+
+	// newStruct.FieldByName("FullyQualifiedName").SetString("")
+	// newStruct := reflect.New(t).Elem()
+
+	// Create a new type (struct) with the additional field
+	newType := reflect.StructOf([]reflect.StructField{
+		// Copy the existing fields
+		t.Field(0),
+		t.Field(1),
+		// Add the new field
+		{
+			Name: "FullyQualifiedName",
+			Type: reflect.TypeOf(""),
+			Tag:  reflect.StructTag("json:\"fullyQualifiedName\""),
+		},
+	})
+
+	newStruct := reflect.New(newType).Elem()
+
+	// Copy existing fields
+	for i := 0; i < t.NumField(); i++ {
+		log.Println("json_schema.go - addFieldToStructInterface - see firlds: ", i)
+		field := v.Field(i)
+		newStruct.Field(i).Set(field)
+	}
+
+	log.Println("json_schema.go - addFieldToStructInterface - see fqn: ", fullyQualifiedName)
+	// Add the new field
+	newStruct.FieldByName("FullyQualifiedName").SetString(fullyQualifiedName)
+
+	return newStruct.Interface()
+}
+
 // Serialize implements serialization of generic data to JSON
 func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
 	}
+
+	// get the fully qualified name
+	msgFQN := reflect.TypeOf(msg).String()
+	log.Println("json_schema.go - Serialize - see msgFQN: ", msgFQN)
+
+	// test add field
+	msg = s.addFieldToStructInterface(msg, msgFQN)
+
 	jschema := jsonschema.Reflect(msg)
+
 	raw, err := json.Marshal(jschema)
 	if err != nil {
 		return nil, err
 	}
+
 	info := schemaregistry.SchemaInfo{
-		Schema:     string(raw),
-		SchemaType: "JSON",
+		Schema:                   string(raw),
+		SchemaType:               "JSON",
+		SchemaFullyQualifiedName: msgFQN,
 	}
+
+	log.Println("json_schema.go - Serialize - see jschema: ", info)
+
 	id, err := s.GetID(topic, msg, info)
 	if err != nil {
 		return nil, err
@@ -125,7 +232,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	log.Println("json_schema.go - Deserialize - info: ", info)
+	// log.Println("json_schema.go - Deserialize - info: ", info)
 
 	if s.validate {
 		// Need to unmarshal to pure interface
@@ -148,7 +255,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	log.Println("json_schema.go - Deserialize - subject: ", subject)
+	// log.Println("json_schema.go - Deserialize - subject: ", subject)
 
 	msg, err := s.MessageFactory(subject, "")
 	if err != nil {
@@ -162,7 +269,147 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	return msg, nil
 }
 
+// func (s *Deserializer) getFieldFromBytes(bytes []byte, fieldName string, element interface{}) {
+// 	// v := reflect.New(reflect.TypeOf(element)).Elem() ok if not a pointer
+// 	v := reflect.ValueOf(element).Elem()
+// 	size := v.NumField()
+// 	offset := 0
+//
+// 	fmt.Println("json_schema.go - getFieldFromBytes")
+// 	for i := 0; i < size; i++ {
+// 		field := v.Type().Field(i)
+// 		fmt.Println("json_schema.go - getFieldFromBytes - field: ", field.Name)
+// 		if field.Name == fieldName {
+// 			fieldSize := int(field.Type.Size())
+// 			switch field.Type.Kind() {
+// 			case reflect.String:
+// 				fieldValue := string(bytes[offset : offset+fieldSize])
+// 				// return fieldValue, nil
+// 				fmt.Println("json_schema.go - getFieldFromBytes - the string field: ", fieldValue)
+// 			case reflect.Int:
+// 				fieldValue := binary.LittleEndian.Uint32(bytes[offset : offset+fieldSize])
+// 				// return int(fieldValue), nil
+// 				fmt.Println("json_schema.go - getFieldFromBytes - the int field: ", int(fieldValue))
+// 			}
+// 		}
+// 		offset += int(field.Type.Size())
+// 	}
+// }
+
+func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (string, error) {
+	var fieldNameBytes []byte
+	var fieldValueBytes []byte
+	fieldNameLen := 0
+	readingFieldName := true
+
+	for _, b := range bytes {
+		if readingFieldName {
+			if fieldNameLen == 0 {
+				// The first byte of the field name indicates its length
+				fieldNameLen = int(b)
+			} else {
+				// Accumulate bytes for the field name
+				fieldNameBytes = append(fieldNameBytes, b)
+				if len(fieldNameBytes) == fieldNameLen {
+					readingFieldName = false
+				}
+			}
+		} else {
+			// Accumulate bytes for the field value
+			fieldValueBytes = append(fieldValueBytes, b)
+		}
+	}
+
+	if fieldName != string(fieldNameBytes) {
+		return "", fmt.Errorf("field not found: %s", fieldName)
+	}
+
+	return string(fieldValueBytes), nil
+}
+
 func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+	if payload == nil {
+		return nil, nil
+	}
+
+	type Payload struct {
+		FullyQualifiedName string `json:"fullyQualifiedName"`
+	}
+
+	// get the real payload
+	pl := payload[5:]
+
+	// Create a variable to hold the extracted value
+	var tmp Payload
+
+	// Unmarshal the JSON string into the struct
+	err := json.Unmarshal(pl, &tmp)
+	if err != nil {
+		fmt.Println("Error:", err)
+		// return
+	}
+
+	// Access the extracted value
+	fullyQualifiedName := tmp.FullyQualifiedName
+
+	fmt.Println("the sssssssssssstttttttrrrrrrrr 000: ", fullyQualifiedName)
+
+	// for k, _ := subjects[fullyQualifiedName] {
+
+	// s.getFieldFromBytes(pl, "FullyQualifiedName", v)
+	// str, err := s.deserializeStringField(pl, "FullyQualifiedName")
+	// str, err := s.deserializeStringField(pl, "Name")
+	// if err != nil {
+	// 	fmt.Println("the errr: ", err)
+	// }
+	// fmt.Println("the sssssssssssstttttttrrrrrrrr: ", str)
+
+	// get subjectName which has been added into the payload
+
+	// info, err := s.GetSchema(fmt.Sprintf("%s-value", fullyQualifiedName), payload)
+	info, err := s.GetSchema(fullyQualifiedName, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("json_schema.go - DeserializeRecordName - info - FQN: ", info.SchemaFullyQualifiedName)
+	log.Println("json_schema.go - DeserializeRecordName - info - FQN: ", info)
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[5:], &obj)
+		if err != nil {
+			return nil, err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return nil, err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return nil, err
+		}
+	}
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("json_schema.go - DeserializeRecordName - subject: ", subject)
+
+	msg, err := s.MessageFactory(subject, "")
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(payload[5:], msg)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+	// }
+
 	return nil, nil
 }
 

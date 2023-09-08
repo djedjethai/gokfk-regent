@@ -38,6 +38,15 @@ func NewSerializerConfig() *SerializerConfig {
 	return c
 }
 
+func NewSerializerConfigSubjectStrategy(st string) *SerializerConfig {
+	c := &SerializerConfig{
+		SerializerConfig: *serde.NewSerializerConfigSubjectStrategy(st),
+		EnableValidation: false,
+	}
+
+	return c
+}
+
 // DeserializerConfig is used to pass multiple configuration options to the deserializers.
 type DeserializerConfig struct {
 	serde.DeserializerConfig
