@@ -217,6 +217,8 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 			return -1, err
 		}
 	}
+
+	log.Println("serde.go - GetID - end id: ", id)
 	return id, nil
 }
 

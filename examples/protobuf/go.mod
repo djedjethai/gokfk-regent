@@ -2,6 +2,8 @@ module examples
 
 go 1.21.0
 
+replace github.com/djedjethai/kfk-schemaregistry => ../..
+
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.2.0
 	github.com/djedjethai/kfk-schemaregistry v0.0.0-20230902093333-3f654336d78c

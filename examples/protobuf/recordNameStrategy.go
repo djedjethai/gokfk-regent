@@ -113,6 +113,7 @@ func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) (i
 	kafkaChan := make(chan kafka.Event)
 	defer close(kafkaChan)
 
+	log.Println("recordNameStrategy.go - produceMassage - allllo")
 	payload, err := p.serializer.Serialize(subject, msg)
 	if err != nil {
 		return nullOffset, err

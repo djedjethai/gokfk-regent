@@ -156,6 +156,7 @@ func (s *Deserializer) ConfigureDeserializer(client schemaregistry.Client, serde
 
 // Serialize implements serialization of Protobuf data
 func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
+
 	if msg == nil {
 		return nil, nil
 	}
@@ -166,6 +167,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
 	}
+
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
 	fileDesc, deps, err := s.toProtobufSchema(protoMsg)
@@ -182,7 +184,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		References: metadata.References,
 	}
 
-	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
+	fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
 	id, err := s.GetID(topic, protoMsg, info)
 	if err != nil {

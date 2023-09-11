@@ -139,12 +139,12 @@ func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQuali
 
 	// Copy existing fields
 	for i := 0; i < t.NumField(); i++ {
-		log.Println("json_schema.go - addFieldToStructInterface - see firlds: ", i)
+		// log.Println("json_schema.go - addFieldToStructInterface - see firlds: ", i)
 		field := v.Field(i)
 		newStruct.Field(i).Set(field)
 	}
 
-	log.Println("json_schema.go - addFieldToStructInterface - see fqn: ", fullyQualifiedName)
+	// log.Println("json_schema.go - addFieldToStructInterface - see fqn: ", fullyQualifiedName)
 	// Add the new field
 	newStruct.FieldByName("FullyQualifiedName").SetString(fullyQualifiedName)
 
@@ -159,7 +159,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 
 	// get the fully qualified name
 	msgFQN := reflect.TypeOf(msg).String()
-	log.Println("json_schema.go - Serialize - see msgFQN: ", msgFQN)
+	// log.Println("json_schema.go - Serialize - see msgFQN: ", msgFQN)
 
 	// test add field
 	msg = s.addFieldToStructInterface(msg, msgFQN)
@@ -180,6 +180,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	log.Println("json_schema.go - Serialize - see jschema: ", info)
 
 	id, err := s.GetID(topic, msg, info)
+	log.Println("json_schema.go - Serialize - see jschema: ", id)
 	if err != nil {
 		return nil, err
 	}

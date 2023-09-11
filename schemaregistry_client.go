@@ -309,6 +309,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 	c.schemaToIdCacheLock.RLock()
 	idValue, ok := c.schemaToIdCache.Get(cacheKey)
+	log.Println("schemaregistry_client.go - Register - idValue: ", idValue)
 	c.schemaToIdCacheLock.RUnlock()
 	if ok {
 		return idValue.(int), nil
@@ -331,11 +332,13 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 		err = c.restService.handleRequest(newRequest("POST", versionNormalize, &metadata, url.PathEscape(subject), normalize), &metadata)
 		if err == nil {
+			log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
 			c.schemaToIdCache.Put(cacheKey, metadata.ID)
 		} else {
 			metadata.ID = -1
 		}
 	} else {
+		log.Println("schemaregistry_client.go - Register - idValue2: ", idValue)
 		metadata.ID = idValue.(int)
 	}
 	c.schemaToIdCacheLock.Unlock()
@@ -371,10 +374,11 @@ func (c *client) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, e
 	infoValue, ok = c.idToSchemaCache.Get(cacheKey)
 	if !ok {
 
-		log.Println("schemaregistry_client.go - GetBySubjectAndID - OK: ", subject)
 		if len(subject) > 0 {
+			log.Println("schemaregistry_client.go - GetBySubjectAndID - Query API with subject: ", subject)
 			err = c.restService.handleRequest(newRequest("GET", schemasBySubject, nil, id, url.QueryEscape(subject)), &metadata)
 		} else {
+			log.Println("schemaregistry_client.go - GetBySubjectAndID - Query API only ID: ", subject)
 			err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
 		}
 		if err == nil {
@@ -411,6 +415,7 @@ func (c *client) GetID(subject string, schema SchemaInfo, normalize bool) (id in
 
 	c.schemaToIdCacheLock.RLock()
 	idValue, ok := c.schemaToIdCache.Get(cacheKey)
+	// log.Println("schemaregistry_client.go - GetID - idValue from cache: ", idValue)
 	c.schemaToIdCacheLock.RUnlock()
 	if ok {
 		return idValue.(int), nil
@@ -433,6 +438,7 @@ func (c *client) GetID(subject string, schema SchemaInfo, normalize bool) (id in
 	} else {
 		metadata.ID = idValue.(int)
 	}
+	log.Println("schemaregistry_client.go - GetID - idValue end: ", idValue)
 	c.schemaToIdCacheLock.Unlock()
 	return metadata.ID, err
 }
