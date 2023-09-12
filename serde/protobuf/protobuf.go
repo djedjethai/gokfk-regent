@@ -168,6 +168,22 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
 	}
 
+	// my add
+	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
+
+	fullName := messageDescriptor.FullName()
+
+	// Get the type of the message using reflection
+	// msgType := reflect.TypeOf(protoMsg)
+
+	// // Dereference the pointer to get the underlying struct type
+	// msgType = msgType.Elem()
+
+	// // Get the message descriptor using the protoreflect package
+	// messageDescriptor := protoreflect.MessageType(msgType).Interface().(protoreflect.MessageDescriptor)
+
+	fmt.Println("protobuf.go - serialize - see yhe gullName: ", fullName)
+
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
 	fileDesc, deps, err := s.toProtobufSchema(protoMsg)

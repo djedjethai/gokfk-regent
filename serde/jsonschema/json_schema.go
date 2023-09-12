@@ -152,7 +152,7 @@ func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQuali
 }
 
 // Serialize implements serialization of generic data to JSON
-func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
+func (s *Serializer) Serialize(subject string, msg interface{}) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
 	}
@@ -172,14 +172,15 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	}
 
 	info := schemaregistry.SchemaInfo{
-		Schema:                   string(raw),
-		SchemaType:               "JSON",
-		SchemaFullyQualifiedName: msgFQN,
+		Schema:     string(raw),
+		SchemaType: "JSON",
+		// SchemaFullyQualifiedName: msgFQN,
 	}
 
 	log.Println("json_schema.go - Serialize - see jschema: ", info)
 
-	id, err := s.GetID(topic, msg, info)
+	// id, err := s.GetID(subject, msg, info)
+	id, err := s.GetID(msgFQN, msg, info)
 	log.Println("json_schema.go - Serialize - see jschema: ", id)
 	if err != nil {
 		return nil, err
@@ -355,25 +356,12 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 
 	fmt.Println("the sssssssssssstttttttrrrrrrrr 000: ", fullyQualifiedName)
 
-	// for k, _ := subjects[fullyQualifiedName] {
-
-	// s.getFieldFromBytes(pl, "FullyQualifiedName", v)
-	// str, err := s.deserializeStringField(pl, "FullyQualifiedName")
-	// str, err := s.deserializeStringField(pl, "Name")
-	// if err != nil {
-	// 	fmt.Println("the errr: ", err)
-	// }
-	// fmt.Println("the sssssssssssstttttttrrrrrrrr: ", str)
-
-	// get subjectName which has been added into the payload
-
-	// info, err := s.GetSchema(fmt.Sprintf("%s-value", fullyQualifiedName), payload)
 	info, err := s.GetSchema(fullyQualifiedName, payload)
+	// info, err := s.GetSchema("", payload)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println("json_schema.go - DeserializeRecordName - info - FQN: ", info.SchemaFullyQualifiedName)
 	log.Println("json_schema.go - DeserializeRecordName - info - FQN: ", info)
 
 	if s.validate {
@@ -411,7 +399,7 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 	return msg, nil
 	// }
 
-	return nil, nil
+	// return nil, nil
 }
 
 // DeserializeInto implements deserialization of generic data from JSON to the given object

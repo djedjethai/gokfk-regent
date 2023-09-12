@@ -145,48 +145,50 @@ func TopicNameStrategy(topic string, serdeType Type, schema schemaregistry.Schem
 }
 
 // TopicNameStrategy creates a subject name by appending -[key|value] to the topic name.
-func RecordNameStrategy(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
+// NOTE same as previous func....
+func RecordNameStrategy(subject string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
 
-	log.Println("seeeeeeeeeeeeee the schema bytes: ", schema.SchemaFullyQualifiedName)
+	// log.Println("seeeeeeeeeeeeee the schema bytes: ", schema.SchemaFullyQualifiedName)
 
 	suffix := "-value"
 	if serdeType == KeySerde {
 		suffix = "-key"
 	}
-	return schema.SchemaFullyQualifiedName + suffix, nil
+	// return schema.SchemaFullyQualifiedName + suffix, nil
+	return subject + suffix, nil
 }
 
 // GetID returns a schema ID for the given schema
-func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistry.SchemaInfo) (int, error) {
+func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregistry.SchemaInfo) (int, error) {
 	autoRegister := s.Conf.AutoRegisterSchemas
 	useSchemaID := s.Conf.UseSchemaID
 	useLatest := s.Conf.UseLatestVersion
 	normalizeSchema := s.Conf.NormalizeSchemas
 
 	var id = -1
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	fullSubject, err := s.SubjectNameStrategy(subject, s.SerdeType, info)
 	if err != nil {
 		return -1, err
 	}
 
-	log.Println("serde.go - GetID - subject: ", subject)
+	log.Println("serde.go - GetID - subject: ", fullSubject)
 
 	if autoRegister {
 
 		log.Println("serde.go - GetID - autoRegister: ", info)
-		id, err = s.Client.Register(subject, info, normalizeSchema)
+		id, err = s.Client.Register(fullSubject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
 		}
 	} else if useSchemaID >= 0 {
-		info, err = s.Client.GetBySubjectAndID(subject, useSchemaID)
+		info, err = s.Client.GetBySubjectAndID(fullSubject, useSchemaID)
 		if err != nil {
 			return -1, err
 		}
 
 		log.Println("serde.go - GetID - UseSchemaID: ", info)
 
-		id, err = s.Client.GetID(subject, info, false)
+		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
 			return -1, err
 		}
@@ -194,7 +196,7 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 			return -1, fmt.Errorf("failed to match schema ID (%d != %d)", id, useSchemaID)
 		}
 	} else if useLatest {
-		metadata, err := s.Client.GetLatestSchemaMetadata(subject)
+		metadata, err := s.Client.GetLatestSchemaMetadata(fullSubject)
 		if err != nil {
 			return -1, err
 		}
@@ -205,14 +207,14 @@ func (s *BaseSerializer) GetID(topic string, msg interface{}, info schemaregistr
 			References: metadata.References,
 		}
 		log.Println("serde.go - GetID - UseLatest: ", info)
-		id, err = s.Client.GetID(subject, info, false)
+		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
 			return -1, err
 		}
 	} else {
 
 		log.Println("serde.go - GetID - else   : ", info)
-		id, err = s.Client.GetID(subject, info, normalizeSchema)
+		id, err = s.Client.GetID(fullSubject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
 		}
@@ -255,8 +257,11 @@ func (s *BaseDeserializer) GetSchema(subject string, payload []byte) (schemaregi
 		if err != nil {
 			return info, err
 		}
+
+		return s.Client.GetBySubjectAndID(subject, int(id))
+	} else {
+		return s.Client.GetByID(int(id))
 	}
-	return s.Client.GetBySubjectAndID(subject, int(id))
 }
 
 // ResolveReferences resolves schema references
