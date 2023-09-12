@@ -146,6 +146,11 @@ func (c *mockclient) generateVersion(subject string, schema SchemaInfo) error {
 	return nil
 }
 
+// TODO to implement
+func (c *mockclient) GetByID(id int) (schema SchemaInfo, err error) {
+	return SchemaInfo{}, nil
+}
+
 // GetBySubjectAndID returns the schema identified by id
 // Returns Schema object on success
 func (c *mockclient) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, err error) {

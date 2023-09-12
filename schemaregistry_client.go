@@ -364,23 +364,18 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 // Returns Schema object on success
 func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 
-	log.Println("schemaregistry_client.go - GetBySubjectAndID - see ID: ", id)
+	log.Println("schemaregistry_client.go - GetByID - id: ", id)
 
 	cacheKey := subjectOnlyID{id}
-
-	log.Println("schemaregistry_client.go - GetBySubjectAndID - cacheKey: ", cacheKey)
 
 	c.idToSchemaCacheLock.RLock()
 	subjIDPayload, ok := c.idToSchemaCache.Get(cacheKey)
 	c.idToSchemaCacheLock.RUnlock()
 
-	// TODO change the check of the embedded struct to be a strct's method
-	// if ok && subjIDPayload.(subjectOnlyIDPayload).SchemaInfo.Schema != "" {
 	if ok {
-		log.Println("schemaregistry_client.go - GetBySubjectAndID - OK cache: ", *subjIDPayload.(*SchemaInfo))
+		log.Println("schemaregistry_client.go - GetByID - OK cache: ", *subjIDPayload.(*SchemaInfo))
 
 		return *subjIDPayload.(*SchemaInfo), nil
-		// return *subjIDPayload.(subjectOnlyIDPayload).SchemaInfo, nil
 	}
 
 	metadata := SchemaMetadata{}
@@ -388,22 +383,25 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 	c.idToSchemaCacheLock.Lock()
 	// another goroutine could have already put it in cache
 	subjIDPayload, ok = c.idToSchemaCache.Get(cacheKey)
-	// if !ok || (ok && subjIDPayload.(subjectOnlyIDPayload).SchemaInfo.Schema == "") {
 	if !ok {
 		var err error
 		log.Println("schemaregistry_client.go - GetBySubjectAndID - Query API only ID: ", subject)
-		err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), metadata)
+		err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
 		if err == nil {
 
 			newInfo.Schema = metadata.Schema
 			newInfo.SchemaType = metadata.SchemaType
 			newInfo.References = metadata.References
 
+			log.Println("schemaregistry_client.go - GetByID - metatdata: ", metadata)
+
 			c.idToSchemaCache.Put(cacheKey, newInfo)
+		} else {
+			// NOTE do I let it ??
+			return *newInfo, fmt.Errorf("Invalid server error")
 		}
 
 	} else {
-		// log.Println("schemaregistry_client.go - GetBySubjectAndID - OK cache3: ", *subjIDPayload.(subjectOnlyIDPayload).SchemaInfo)
 		log.Println("schemaregistry_client.go - GetBySubjectAndID - OK cache3: ", *subjIDPayload.(*SchemaInfo))
 
 		// newInfo = subjIDPayload.(subjectOnlyIDPayload).SchemaInfo

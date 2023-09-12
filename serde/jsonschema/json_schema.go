@@ -356,6 +356,11 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 
 	fmt.Println("the sssssssssssstttttttrrrrrrrr 000: ", fullyQualifiedName)
 
+	// make sure the incomming event own the right fullyQualifiedName
+	if _, ok := subjects[fullyQualifiedName]; !ok {
+		return nil, fmt.Errorf("Non matching subject")
+	}
+
 	info, err := s.GetSchema(fullyQualifiedName, payload)
 	// info, err := s.GetSchema("", payload)
 	if err != nil {
