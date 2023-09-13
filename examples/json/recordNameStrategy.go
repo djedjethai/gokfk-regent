@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	// "reflect"
+	"reflect"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -241,24 +241,24 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// // receivers := make(map[string]interface{})
-	// px := Person{}
-	// addr := Address{}
-	// msgFQN := reflect.TypeOf(px).String()
-	// addrFQN := reflect.TypeOf(addr).String()
-	// // receivers[fmt.Sprintf("%s-value", msgFQN)] = &px
-	// // receivers[fmt.Sprintf("%s-value", addrFQN)] = &addr
-	// // c.deserializer.MessageFactory = c.RegisterMessageFactory(receivers)
+	// receivers := make(map[string]interface{})
+	px := Person{}
+	addr := Address{}
+	msgFQN := reflect.TypeOf(px).String()
+	addrFQN := reflect.TypeOf(addr).String()
+	// receivers[fmt.Sprintf("%s-value", msgFQN)] = &px
+	// receivers[fmt.Sprintf("%s-value", addrFQN)] = &addr
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory(receivers)
 
-	// ref := make(map[string]interface{})
-	// // ref[msgFQN] = &struct{}{}
-	// // ref[addrFQN] = &struct{}{}
-	// ref[msgFQN] = &px
-	// ref[addrFQN] = &addr
+	ref := make(map[string]interface{})
+	// ref[msgFQN] = &struct{}{}
+	// ref[addrFQN] = &struct{}{}
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
 
-	// c.deserializer.MessageFactory = c.RegisterMessageFactory(ref)
+	c.deserializer.MessageFactory = c.RegisterMessageFactory(ref)
 
-	// // c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -269,8 +269,7 @@ func (c *srConsumer) Run(topic string) error {
 		// log.Println("recordNameStrategy.go - consumer - kafkaMsg: ", kafkaMsg.Value)
 
 		// get a msg of type interface{}
-		// msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
-		msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
+		msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
 		if err != nil {
 			return err
 		}

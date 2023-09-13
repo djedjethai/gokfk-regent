@@ -67,48 +67,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		return nil, nil
 	}
 
-	jschema := jsonschema.Reflect(msg)
-
-	raw, err := json.Marshal(jschema)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Println("json_schema.go - Serialize - see jschema: ", string(raw))
-
-	info := schemaregistry.SchemaInfo{
-		Schema:     string(raw),
-		SchemaType: "JSON",
-	}
-	id, err := s.GetID(topic, msg, info)
-	if err != nil {
-		return nil, err
-	}
-	raw, err = json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-	if s.validate {
-		// Need to unmarshal to pure interface
-		var obj interface{}
-		err = json.Unmarshal(raw, &obj)
-		if err != nil {
-			return nil, err
-		}
-		jschema, err := toJSONSchema(s.Client, info)
-		if err != nil {
-			return nil, err
-		}
-		err = jschema.Validate(obj)
-		if err != nil {
-			return nil, err
-		}
-	}
-	payload, err := s.WriteBytes(id, raw)
-	if err != nil {
-		return nil, err
-	}
-	return payload, nil
+	return s.helperRunSerialize(topic, msg)
 }
 
 func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQualifiedName string) interface{} {
@@ -116,7 +75,7 @@ func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQuali
 	v := reflect.ValueOf(someStruct)
 	t := v.Type()
 	if t.Kind() != reflect.Struct {
-		panic("Input is not a struct")
+		log.Println("Input is not a struct")
 	}
 
 	// Function to recursively add fields from embedded structs
@@ -156,48 +115,13 @@ func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQuali
 		newField.Set(field)
 	}
 
-	// // was OK
-	// // Create a new type (struct) with the additional field
-	// newType := reflect.StructOf([]reflect.StructField{
-	// 	// Copy the existing fields
-	// 	t.Field(0),
-	// 	t.Field(1),
-	// 	// Add the new field
-	// 	{
-	// 		Name: "FullyQualifiedName",
-	// 		Type: reflect.TypeOf(""),
-	// 		Tag:  reflect.StructTag("json:\"fullyQualifiedName\""),
-	// 	},
-	// })
-
-	// newStruct := reflect.New(newType).Elem()
-
-	// // Copy existing fields
-	// for i := 0; i < t.NumField(); i++ {
-	// 	// log.Println("json_schema.go - addFieldToStructInterface - see firlds: ", i)
-	// 	field := v.Field(i)
-	// 	newStruct.Field(i).Set(field)
-	// }
-
 	// Add the new field
 	newStruct.FieldByName("FullyQualifiedName").SetString(fullyQualifiedName)
 
 	return newStruct.Interface()
 }
 
-// Serialize implements serialization of generic data to JSON
-func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
-	if msg == nil {
-		return nil, nil
-	}
-
-	// get the fully qualified name
-	msgFQN := reflect.TypeOf(msg).String()
-	// log.Println("json_schema.go - Serialize - see msgFQN: ", msgFQN)
-
-	// test add field
-	msg = s.addFieldToStructInterface(msg, msgFQN)
-
+func (s *Serializer) helperRunSerialize(subject string, msg interface{}) ([]byte, error) {
 	jschema := jsonschema.Reflect(msg)
 
 	raw, err := json.Marshal(jschema)
@@ -208,14 +132,9 @@ func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byt
 	info := schemaregistry.SchemaInfo{
 		Schema:     string(raw),
 		SchemaType: "JSON",
-		// SchemaFullyQualifiedName: msgFQN,
 	}
 
-	log.Println("json_schema.go - Serialize - see jschema: ", info)
-
-	// id, err := s.GetID(subject, msg, info)
-	id, err := s.GetID(msgFQN, msg, info)
-	log.Println("json_schema.go - Serialize - see jschema: ", id)
+	id, err := s.GetID(subject, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +163,22 @@ func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byt
 		return nil, err
 	}
 	return payload, nil
+
+}
+
+// Serialize implements serialization of generic data to JSON
+func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+	if msg == nil {
+		return nil, nil
+	}
+
+	// get the fully qualified name
+	msgFQN := reflect.TypeOf(msg).String()
+
+	// test add field
+	msg = s.addFieldToStructInterface(msg, msgFQN)
+
+	return s.helperRunSerialize(msgFQN, msg)
 }
 
 // NewDeserializer creates a JSON deserializer for generic objects
@@ -305,33 +240,6 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	return msg, nil
 }
 
-// func (s *Deserializer) getFieldFromBytes(bytes []byte, fieldName string, element interface{}) {
-// 	// v := reflect.New(reflect.TypeOf(element)).Elem() ok if not a pointer
-// 	v := reflect.ValueOf(element).Elem()
-// 	size := v.NumField()
-// 	offset := 0
-//
-// 	fmt.Println("json_schema.go - getFieldFromBytes")
-// 	for i := 0; i < size; i++ {
-// 		field := v.Type().Field(i)
-// 		fmt.Println("json_schema.go - getFieldFromBytes - field: ", field.Name)
-// 		if field.Name == fieldName {
-// 			fieldSize := int(field.Type.Size())
-// 			switch field.Type.Kind() {
-// 			case reflect.String:
-// 				fieldValue := string(bytes[offset : offset+fieldSize])
-// 				// return fieldValue, nil
-// 				fmt.Println("json_schema.go - getFieldFromBytes - the string field: ", fieldValue)
-// 			case reflect.Int:
-// 				fieldValue := binary.LittleEndian.Uint32(bytes[offset : offset+fieldSize])
-// 				// return int(fieldValue), nil
-// 				fmt.Println("json_schema.go - getFieldFromBytes - the int field: ", int(fieldValue))
-// 			}
-// 		}
-// 		offset += int(field.Type.Size())
-// 	}
-// }
-
 func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (string, error) {
 	var fieldNameBytes []byte
 	var fieldValueBytes []byte
@@ -363,8 +271,8 @@ func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (s
 	return string(fieldValueBytes), nil
 }
 
-// func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
-func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
+// DeserializeRecordName deserialise a bytes
+func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}
@@ -389,21 +297,16 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	// Access the extracted value
 	fullyQualifiedName := tmp.FullyQualifiedName
 
-	fmt.Println("the sssssssssssstttttttrrrrrrrr 000: ", fullyQualifiedName)
-
 	// make sure the incomming event own the right fullyQualifiedName
-	// TODO add this into the DeserializeRecordNameInto
-	// if _, ok := subjects[fullyQualifiedName]; !ok {
-	//	return nil, fmt.Errorf("Non matching subject")
-	// }
+	if _, ok := subjects[fullyQualifiedName]; !ok {
+		return nil, fmt.Errorf("Non matching subject")
+	}
 
 	info, err := s.GetSchema(fullyQualifiedName, payload)
 	// info, err := s.GetSchema("", payload)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println("json_schema.go - DeserializeRecordName - info - FQN: ", info)
 
 	if s.validate {
 		// Need to unmarshal to pure interface
@@ -426,26 +329,16 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, err
 	}
 
-	log.Println("json_schema.go - DeserializeRecordName - subject: ", subject)
-
 	msg, err := s.MessageFactory(subject, "")
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println("json_schema.go - DeserializeRecordName - subject: after0 ", msg)
-
 	err = json.Unmarshal(payload[5:], msg)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println("json_schema.go - DeserializeRecordName - subject: end ")
-
 	return msg, nil
-	// }
-
-	// return nil, nil
 }
 
 // DeserializeInto implements deserialization of generic data from JSON to the given object

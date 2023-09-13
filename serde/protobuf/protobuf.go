@@ -387,8 +387,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 }
 
 // DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
-// func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
-func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
+func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}
@@ -400,8 +399,11 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	// if _, ok := subjects[msgFullyQlfName]; ok {
-	return s.deserializePayload(bytesRead, messageDesc, msgFullyQlfName, info, payload)
+	if _, ok := subjects[msgFullyQlfName]; ok {
+		return s.deserializePayload(bytesRead, messageDesc, msgFullyQlfName, info, payload)
+	} else {
+		return nil, fmt.Errorf("Invalid fullyQualifiedName")
+	}
 }
 
 func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {

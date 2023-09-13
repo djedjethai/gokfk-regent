@@ -70,8 +70,8 @@ type Deserializer interface {
 	ConfigureDeserializer(client schemaregistry.Client, serdeType Type, conf *DeserializerConfig) error
 	// Deserialize will call the MessageFactory to create an object
 	// into which we will unmarshal data.
-	// DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
-	DeserializeRecordName(payload []byte) (interface{}, error)
+	DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
+	// DeserializeRecordName(payload []byte) (interface{}, error)
 	Deserialize(topic string, payload []byte) (interface{}, error)
 	// DeserializeInto will unmarshal data into the given object.
 	DeserializeInto(topic string, payload []byte, msg interface{}) error
