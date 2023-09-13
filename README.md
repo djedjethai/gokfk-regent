@@ -242,7 +242,6 @@ func (c *srConsumer) RegisterMessageFactoryIntoRecordName(subjectTypes map[strin
 	}
 }
 
-// NOTE doing like so make sure the event subject match the expected receiver's subject
 func (c *srConsumer) RegisterMessageFactoryRecordName() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
 		switch strings.TrimSuffix(subject, "-value") {
