@@ -199,11 +199,6 @@ type subjectOnlyID struct {
 	id int
 }
 
-// type subjectOnlyIDPayload struct {
-// 	Subject    string
-// 	SchemaInfo *SchemaInfo
-// }
-
 /* HTTP(S) Schema Registry Client and schema caches */
 type client struct {
 	sync.Mutex

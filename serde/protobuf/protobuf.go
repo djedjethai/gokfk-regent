@@ -154,6 +154,11 @@ func (s *Deserializer) ConfigureDeserializer(client schemaregistry.Client, serde
 	return nil
 }
 
+// SerializeRecordName serialize a protbuf data, here set to match the interface
+func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+	return s.Serialize(subject, msg)
+}
+
 // Serialize implements serialization of Protobuf data
 func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 
@@ -382,7 +387,8 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 }
 
 // DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
-func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+// func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}
@@ -394,11 +400,8 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	if _, ok := subjects[msgFullyQlfName]; ok {
-		return s.deserializePayload(bytesRead, messageDesc, msgFullyQlfName, info, payload)
-	} else {
-		return nil, fmt.Errorf("unfound subject declaration for %v", msgFullyQlfName)
-	}
+	// if _, ok := subjects[msgFullyQlfName]; ok {
+	return s.deserializePayload(bytesRead, messageDesc, msgFullyQlfName, info, payload)
 }
 
 func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
