@@ -20,7 +20,6 @@
 package jsonschema
 
 import (
-	// "encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -166,7 +165,7 @@ func (s *Serializer) helperRunSerialize(subject string, msg interface{}) ([]byte
 
 }
 
-// Serialize implements serialization of generic data to JSON
+// SerializeRecordName implements serialization of generic data to JSON
 func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -203,8 +202,6 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	// log.Println("json_schema.go - Deserialize - info: ", info)
-
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
@@ -225,8 +222,6 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
-
-	// log.Println("json_schema.go - Deserialize - subject: ", subject)
 
 	msg, err := s.MessageFactory(subject, "")
 	if err != nil {
@@ -271,7 +266,7 @@ func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (s
 	return string(fieldValueBytes), nil
 }
 
-// DeserializeRecordName deserialise a bytes
+// DeserializeRecordName deserialise bytes
 func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -341,6 +336,13 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 	return msg, nil
 }
 
+// DeserializeIntoRecordName deserialize bytes into the map interface{}
+func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
+	_, err := s.DeserializeRecordName(subjects, payload)
+
+	return err
+}
+
 // DeserializeInto implements deserialization of generic data from JSON to the given object
 func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interface{}) error {
 	if payload == nil {
@@ -370,10 +372,6 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
 	return nil
 }
 

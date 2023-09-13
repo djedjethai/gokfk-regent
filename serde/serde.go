@@ -60,8 +60,8 @@ type Serializer interface {
 	ConfigureSerializer(client schemaregistry.Client, serdeType Type, conf *SerializerConfig) error
 	// Serialize will serialize the given message, which should be a pointer.
 	// For example, in Protobuf, messages are always a pointer to a struct and never just a struct.
-	SerializeRecordName(subject string, msg interface{}) ([]byte, error)
 	Serialize(topic string, msg interface{}) ([]byte, error)
+	SerializeRecordName(subject string, msg interface{}) ([]byte, error)
 	Close()
 }
 
@@ -69,13 +69,13 @@ type Serializer interface {
 type Deserializer interface {
 	ConfigureDeserializer(client schemaregistry.Client, serdeType Type, conf *DeserializerConfig) error
 	// Deserialize will call the MessageFactory to create an object
-	// into which we will unmarshal data.
-	DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
-	// DeserializeRecordName(payload []byte) (interface{}, error)
 	Deserialize(topic string, payload []byte) (interface{}, error)
 	// DeserializeInto will unmarshal data into the given object.
 	DeserializeInto(topic string, payload []byte, msg interface{}) error
+
+	DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
 	DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
+
 	Close()
 }
 
