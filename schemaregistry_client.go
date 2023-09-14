@@ -322,9 +322,11 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 	// log.Println("schemaregistry_client.go - Register - schema: ", schema)
 
+	log.Println("schemaregistry_client.go - Register - schamaBF store in metadata: ", schema)
 	metadata := SchemaMetadata{
 		SchemaInfo: schema,
 	}
+	log.Println("schemaregistry_client.go - Register - metadata: ", schema)
 
 	// log.Println("schemaregistry_client.go - Register - metadata: ", metadata)
 
@@ -332,6 +334,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 	// another goroutine could have already put it in cache
 	idValue, ok = c.schemaToIdCache.Get(cacheKey)
 	if !ok {
+		log.Println("schemaregistry_client.go - Register - post to sr")
 
 		// log.Println("schemaregistry_client.go - Register - metadata in !OK : ", metadata)
 

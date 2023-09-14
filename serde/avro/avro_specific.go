@@ -63,6 +63,10 @@ func NewSpecificSerializer(client schemaregistry.Client, serdeType serde.Type, c
 	return s, nil
 }
 
+func (s *SpecificSerializer) SerializeRecordName(topic string, msg interface{}) ([]byte, error) {
+	return []byte{}, nil
+}
+
 // Serialize implements serialization of specific Avro data
 func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	if msg == nil {
@@ -103,6 +107,14 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 		return nil, err
 	}
 	return s, nil
+}
+
+func (s *SpecificDeserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+	return nil, nil
+}
+
+func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
+	return nil
 }
 
 // Deserialize implements deserialization of specific Avro data

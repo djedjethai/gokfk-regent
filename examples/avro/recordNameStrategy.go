@@ -1,16 +1,17 @@
 package main
 
 import (
-	"errors"
+	// "errors"
+	// "bytes"
 	"fmt"
 	"os"
-	// "reflect"
 	"strings"
 
+	// "github.com/actgardner/gogen-avro/v10/compiler"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
-	"github.com/djedjethai/kfk-schemaregistry/serde/jsonschema"
+	"github.com/djedjethai/kfk-schemaregistry/serde/avro"
 	"log"
 	"time"
 )
@@ -28,6 +29,20 @@ const (
 	noTimeout                    = -1
 )
 
+type Person struct {
+	Name string `avro:"name"`
+	Age  int    `avro:"age"`
+}
+
+type Address struct {
+	Street string `avro:"street"`
+	City   string `avro:"city"`
+}
+
+// func init() {
+// 	compiler.LoggingEnabled = true
+// }
+
 func main() {
 
 	clientMode := os.Args[1]
@@ -42,52 +57,20 @@ func main() {
 	}
 }
 
-type Person struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
-
-type Address struct {
-	Street string `json:"street"`
-	City   string `json:"city"`
-}
-
-type EmbeddedPax struct {
-	Name    string  `json:"name"`
-	Age     int     `json:"age"`
-	Address Address `json:"address"`
-}
-
-type Embedded struct {
-	Pax    EmbeddedPax `json:"pax"`
-	Status string      `json:"status"`
-}
-
 func producer() {
 	producer, err := NewProducer(kafkaURL, srURL)
 	if err != nil {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	msg := Person{
+	msg := &Person{
 		Name: "robert",
 		Age:  23,
 	}
 
-	addr := Address{
-		Street: "myStreet",
-		City:   "Berlin",
-	}
-
-	px := EmbeddedPax{
-		Name:    "robert",
-		Age:     23,
-		Address: addr,
-	}
-
-	embedded := Embedded{
-		Pax:    px,
-		Status: "embedded",
+	addr := &Address{
+		Street: "rue de la soif",
+		City:   "Rennes",
 	}
 
 	for {
@@ -97,16 +80,6 @@ func producer() {
 		}
 
 		offset, err = producer.ProduceMessage(addr, topic)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
-
-		offset, err = producer.ProduceMessage(px, topic)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
-
-		offset, err = producer.ProduceMessage(embedded, topic)
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -137,11 +110,7 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 	if err != nil {
 		return nil, err
 	}
-	s, err := jsonschema.NewSerializer(
-		c,
-		serde.ValueSerde,
-		// TODO make that better ...........................................
-		jsonschema.NewSerializerConfigSubjectStrategy("recordNameStrategy"))
+	s, err := avro.NewGenericSerializer(c, serde.ValueSerde, avro.NewSerializerConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +125,6 @@ func (p *srProducer) ProduceMessage(msg interface{}, topic string) (int64, error
 	kafkaChan := make(chan kafka.Event)
 	defer close(kafkaChan)
 
-	// typeName := reflect.TypeOf(msg).String()
-	// log.Println("recordnameStrategy.go - see the fully qualify class name of person", typeName)
-
-	// payload, err := p.serializer.Serialize(topic, msg)
 	payload, err := p.serializer.SerializeRecordName(topic, msg)
 	if err != nil {
 		return nullOffset, err
@@ -213,7 +178,7 @@ type SRConsumer interface {
 
 type srConsumer struct {
 	consumer     *kafka.Consumer
-	deserializer *jsonschema.Deserializer
+	deserializer *avro.GenericDeserializer
 }
 
 // NewConsumer returns new consumer with schema registry
@@ -233,7 +198,7 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 		return nil, err
 	}
 
-	d, err := jsonschema.NewDeserializer(sr, serde.ValueSerde, jsonschema.NewDeserializerConfig())
+	d, err := avro.NewGenericDeserializer(sr, serde.ValueSerde, avro.NewDeserializerConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -243,35 +208,32 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 	}, nil
 }
 
-func (c *srConsumer) RegisterMessageFactoryIntoRecordName(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
-
+// RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
+func (c *srConsumer) RegisterMessageFactory(receiver interface{}) func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-
-		// subject have the form: package.Type-value
-		if v, ok := subjectTypes[strings.TrimSuffix(subject, "-value")]; !ok {
-			return nil, errors.New("Invalid receiver")
-		} else {
-			return v, nil
-		}
-	}
-}
-
-// NOTE doing like so make sure the event subject match the expected receiver's subject
-func (c *srConsumer) RegisterMessageFactoryRecordName() func(string, string) (interface{}, error) {
-	return func(subject string, name string) (interface{}, error) {
-		switch strings.TrimSuffix(subject, "-value") {
+		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - subject: ", subject)
+		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - name: ", name)
+		switch subject {
 		case "main.Person":
 			return &Person{}, nil
 		case "main.Address":
 			return &Address{}, nil
-		case "main.Embedded":
-			return &Embedded{}, nil
-		case "main.EmbeddedPax":
-			return &EmbeddedPax{}, nil
 		}
-		return nil, errors.New("No matching receiver")
+		return nil, fmt.Errorf("Err RegisterMessageFactory")
+		// return receiver, nil
 	}
 }
+
+// // NOTE doing like so make sure the event subject match the expected receiver's subject
+// func (c *srConsumer) RegisterMessageFactory(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+// 	return func(subject string, name string) (interface{}, error) {
+// 		if tp, ok := subjectTypes[subject]; !ok {
+// 			return nil, errors.New("Invalid receiver")
+// 		} else {
+// 			return tp, nil
+// 		}
+// 	}
+// }
 
 // Run consumer
 // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
@@ -280,33 +242,17 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// case recordNameStrategy
+	// receivers := make(map[string]interface{})
+	// receivers[fmt.Sprintf("%s-value", topic)] = &Person{}
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory(receivers)
+
 	msgFQN := "main.Person"
 	addrFQN := "main.Address"
-	embPaxFQN := "main.EmbeddedPax"
-	embFQN := "main.Embedded"
 	ref := make(map[string]interface{})
 	ref[msgFQN] = struct{}{}
 	ref[addrFQN] = struct{}{}
-	ref[embFQN] = struct{}{}
-	ref[embPaxFQN] = struct{}{}
-	c.deserializer.MessageFactory = c.RegisterMessageFactoryRecordName()
 
-	// // case recordIntoNameSTrategy
-	// px := Person{}
-	// addr := Address{}
-	// embPax := EmbeddedPax{}
-	// emb := Embedded{}
-	// msgFQN := reflect.TypeOf(px).String()
-	// addrFQN := reflect.TypeOf(addr).String()
-	// embPaxFQN := reflect.TypeOf(embPax).String()
-	// embFQN := reflect.TypeOf(emb).String()
-	// ref := make(map[string]interface{})
-	// ref[msgFQN] = &px
-	// ref[addrFQN] = &addr
-	// ref[embPaxFQN] = &embPax
-	// ref[embFQN] = &emb
-	// c.deserializer.MessageFactory = c.RegisterMessageFactoryIntoRecordName(ref)
+	c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -321,14 +267,13 @@ func (c *srConsumer) Run(topic string) error {
 		}
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
-		// // use deserializer.DeserializeIntoRecordName to get a struct back
-		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// // use deserializer.DeserializeInto to get a struct back
+		// person := &Person{}
+		// err = c.deserializer.DeserializeInto(topic, kafkaMsg.Value, person)
 		// if err != nil {
 		// 	return err
 		// }
-		// fmt.Println("message deserialized into: ", px.Name, " - ", addr.Street)
-		// fmt.Println("message deserialized into EmbeddedPax: ", embPax.Name, " - ", embPax.Address.Street)
-		// fmt.Println("message deserialized into Emb: ", emb.Pax.Name, " - ", emb.Pax.Address.Street, " - ", emb.Status)
+		// fmt.Println("See the struct: ", person.Name, " - ", person.Age)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err
@@ -338,6 +283,7 @@ func (c *srConsumer) Run(topic string) error {
 
 func (c *srConsumer) handleMessageAsInterface(message interface{}, offset int64) {
 	fmt.Printf("message %v with offset %d\n", message, offset)
+
 }
 
 // Close all connections
