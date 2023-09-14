@@ -1,1 +1,12 @@
 examples/kafka
+
+examples/protobuf/go.mod
+examples/protobuf/go.sum
+
+examples/json/go.mod
+examples/json/go.sum
+
+examples/avro/go.mod
+examples/avro/go.sum
+examples/avro/Makefile
+
