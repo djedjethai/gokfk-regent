@@ -1,13 +1,11 @@
 package main
 
 import (
-	// "errors"
-	// "bytes"
 	"fmt"
 	"os"
+	// "reflect"
 	"strings"
 
-	// "github.com/actgardner/gogen-avro/v10/compiler"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
@@ -63,12 +61,12 @@ func producer() {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	msg := &Person{
+	msg := Person{
 		Name: "robert",
 		Age:  23,
 	}
 
-	addr := &Address{
+	addr := Address{
 		Street: "rue de la soif",
 		City:   "Rennes",
 	}
@@ -209,7 +207,7 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 }
 
 // RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
-func (c *srConsumer) RegisterMessageFactory(receiver interface{}) func(string, string) (interface{}, error) {
+func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - subject: ", subject)
 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - name: ", name)
@@ -242,17 +240,22 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// receivers := make(map[string]interface{})
-	// receivers[fmt.Sprintf("%s-value", topic)] = &Person{}
-	// c.deserializer.MessageFactory = c.RegisterMessageFactory(receivers)
+	ref := make(map[string]interface{})
 
+	// case DeserializeRecordName
 	msgFQN := "main.Person"
 	addrFQN := "main.Address"
-	ref := make(map[string]interface{})
 	ref[msgFQN] = struct{}{}
 	ref[addrFQN] = struct{}{}
+	c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
-	c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
+	// // case DeserializeIntoRecordName(no need RegisterMessageFactory)
+	// px := Person{}
+	// addr := Address{}
+	// msgFQN := reflect.TypeOf(px).String()
+	// addrFQN := reflect.TypeOf(addr).String()
+	// ref[msgFQN] = &px
+	// ref[addrFQN] = &addr
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -268,12 +271,12 @@ func (c *srConsumer) Run(topic string) error {
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
 		// // use deserializer.DeserializeInto to get a struct back
-		// person := &Person{}
-		// err = c.deserializer.DeserializeInto(topic, kafkaMsg.Value, person)
+		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
-		// fmt.Println("See the struct: ", person.Name, " - ", person.Age)
+		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err

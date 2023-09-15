@@ -58,55 +58,30 @@ func NewGenericSerializer(client schemaregistry.Client, serdeType serde.Type, co
 	return s, nil
 }
 
-func (s GenericSerializer) addFieldToStructInterface(someStruct interface{}, fullyQualifiedName string) interface{} {
-	// Use reflection to create a new instance of the struct
-	v := reflect.ValueOf(someStruct)
-	t := v.Type()
-	if t.Kind() != reflect.Struct {
-		log.Println("Input is not a struct")
+func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string) ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
 	}
 
-	// Function to recursively add fields from embedded structs
-	var addEmbeddedFields func(fields []reflect.StructField, typ reflect.Type) []reflect.StructField
-	addEmbeddedFields = func(fields []reflect.StructField, typ reflect.Type) []reflect.StructField {
-		for i := 0; i < typ.NumField(); i++ {
-			field := typ.Field(i)
-			if field.Anonymous && field.Type.Kind() == reflect.Struct {
-				fields = addEmbeddedFields(fields, field.Type)
-			} else {
-				fields = append(fields, field)
+	parts := strings.Split(msgFQN, ".")
+	if len(parts) > 0 {
+		var namespace string
+		if len(parts) == 2 {
+			namespace = parts[0]
+		} else if len(parts) > 2 {
+			for i := 0; i < len(parts)-1; i++ {
+				if i == 0 {
+					namespace += parts[0]
+				} else {
+					namespace += fmt.Sprintf(".%v", parts[i])
+				}
 			}
+
 		}
-		return fields
+		data["namespace"] = namespace
 	}
-
-	// Create a slice to hold the new struct field list
-	newFields := addEmbeddedFields(nil, t)
-
-	// Add the new field
-	newFields = append(newFields, reflect.StructField{
-		Name: "FullyQualifiedName",
-		Type: reflect.TypeOf(""),
-		Tag:  reflect.StructTag("avro:\"fullyQualifiedName\""),
-	})
-
-	// Create a new type (struct) with the additional field and embedded fields
-	newType := reflect.StructOf(newFields)
-
-	// Create an instance of the new type
-	newStruct := reflect.New(newType).Elem()
-
-	// Copy existing fields, including embedded fields
-	for i := 0; i < t.NumField(); i++ {
-		field := v.Field(i)
-		newField := newStruct.Field(i)
-		newField.Set(field)
-	}
-
-	// Add the new field
-	newStruct.FieldByName("FullyQualifiedName").SetString(fullyQualifiedName)
-
-	return newStruct.Interface()
+	return json.Marshal(data)
 }
 
 // Serialize implements serialization of generic Avro data
@@ -117,10 +92,6 @@ func (s *GenericSerializer) SerializeRecordName(subject string, msg interface{})
 
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*")
-	log.Println("avro_generic.go - SerializeRecordName - see msgFQN: ", msgFQN)
-
-	// test add field
-	// msg = s.addFieldToStructInterface(msg, msgFQN)
 
 	val := reflect.ValueOf(msg)
 	if val.Kind() == reflect.Ptr {
@@ -132,35 +103,14 @@ func (s *GenericSerializer) SerializeRecordName(subject string, msg interface{})
 		return nil, err
 	}
 
-	// change the name......................
-	// Unmarshal the JSON into a map
-	var data map[string]interface{}
-	if err := json.Unmarshal([]byte(avroType.String()), &data); err != nil {
-		log.Println("Error unmarshaling JSON:", err)
-	}
-
-	// Modify the "name" field to a new value
-	data["name"] = msgFQN
-
-	// Marshal the modified data back to a JSON string
-	modifiedJSON, err := json.Marshal(data)
+	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroType.String(), msgFQN)
 	if err != nil {
-		log.Println("Error marshaling JSON:", err)
+		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
 	}
-
-	log.Println("avro_generic.go - SerializeRecordName - modifiedJason: ", string(modifiedJSON))
-	// end change the name.............................
-
-	// log.Println("avro_generic.go - Serialize - msgFQN: ", msgFQN)
-	// log.Println("avro_generic.go - Serialize - avroType: ", avroType)
-	// log.Println("avro_generic.go - Serialize - avroTypeName: ", avroType.Name())
-	// log.Println("avro_generic.go - Serialize - avroTypeString: ", avroType.String())
 
 	info := schemaregistry.SchemaInfo{
 		Schema: string(modifiedJSON),
 	}
-
-	log.Println("avro_generic.go - SerializeRecordName - info to save in sr: ", info)
 
 	id, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
@@ -225,30 +175,26 @@ func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interfac
 		return nil, nil
 	}
 
+	if s.MessageFactory == nil {
+		return nil, fmt.Errorf("MessageFactory func has not been recorded")
+	}
+
 	info, err := s.GetSchema("", payload)
 	if err != nil {
 		return nil, err
 	}
 
-	// start the hach .............................................
+	// recreate the fullyQualifiedName
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
 		log.Println("Error unmarshaling JSON:", err)
 	}
-
-	// Modify the "name" field to a new value
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-	log.Println("avro_generic.go - DeserializeRecordName - name: ", name)
-	log.Println("avro_generic.go - DeserializeRecordName - nameSpace: ", namespace)
-	log.Println("avro_generic.go - DeserializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
-
-	log.Println("avro_generic.go - Deserialize - infoAfterHach: ", info)
-	// {{"type":"record","name":"Person","fields":[{"name":"Name","type":"string","default":""},{"name":"Age","type":"long","default":0}]}  [] }
 
 	if _, ok := subjects[fullyQualifiedName]; !ok {
-		return nil, fmt.Errorf("No matching subject")
+		return nil, fmt.Errorf("No matching subject found")
 	}
 
 	writer, name, err := s.toType(info)
@@ -267,12 +213,44 @@ func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interfac
 	}
 	_, err = avro.Unmarshal(payload[5:], msg, writer)
 	return msg, err
-
-	// return nil, nil
 }
 
 func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
-	return nil
+	if payload == nil {
+		return fmt.Errorf("Empty payload")
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	v, ok := subjects[fullyQualifiedName]
+	if !ok {
+		return fmt.Errorf("No matching subject found")
+	}
+
+	writer, name, err := s.toType(info)
+	if err != nil {
+		return err
+	}
+
+	// msg, err := s.MessageFactory(fullyQualifiedName, name)
+	// if err != nil {
+	// 	return err
+	// }
+
+	_, err = avro.Unmarshal(payload[5:], v, writer)
+	return err
 }
 
 // Deserialize implements deserialization of generic Avro data

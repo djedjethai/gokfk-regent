@@ -21,8 +21,11 @@ package avro
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
+	"strings"
 
 	"github.com/actgardner/gogen-avro/v10/compiler"
 	"github.com/actgardner/gogen-avro/v10/parser"
@@ -63,10 +66,6 @@ func NewSpecificSerializer(client schemaregistry.Client, serdeType serde.Type, c
 	return s, nil
 }
 
-func (s *SpecificSerializer) SerializeRecordName(topic string, msg interface{}) ([]byte, error) {
-	return []byte{}, nil
-}
-
 // Serialize implements serialization of specific Avro data
 func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	if msg == nil {
@@ -99,6 +98,75 @@ func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, e
 	return payload, nil
 }
 
+func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string) ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+	}
+
+	parts := strings.Split(msgFQN, ".")
+	if len(parts) > 0 {
+		var namespace string
+		if len(parts) == 2 {
+			namespace = parts[0]
+		} else if len(parts) > 2 {
+			for i := 0; i < len(parts)-1; i++ {
+				if i == 0 {
+					namespace += parts[0]
+				} else {
+					namespace += fmt.Sprintf(".%v", parts[i])
+				}
+			}
+
+		}
+		data["namespace"] = namespace
+	}
+	return json.Marshal(data)
+}
+
+// Serialize implements serialization of generic Avro data
+func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+	if msg == nil {
+		return nil, nil
+	}
+
+	msgFQN := reflect.TypeOf(msg).String()
+	msgFQN = strings.TrimLeft(msgFQN, "*")
+
+	var avroMsg SpecificAvroMessage
+	switch t := msg.(type) {
+	case SpecificAvroMessage:
+		avroMsg = t
+	default:
+		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
+	}
+
+	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msgFQN)
+	if err != nil {
+		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
+	var id = 0
+	info := schemaregistry.SchemaInfo{
+		Schema: string(modifiedJSON),
+	}
+
+	id, err = s.GetID(subject, avroMsg, info)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	err = avroMsg.Serialize(&buf)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := s.WriteBytes(id, buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
 // NewSpecificDeserializer creates an Avro deserializer for Avro-generated objects
 func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type, conf *DeserializerConfig) (*SpecificDeserializer, error) {
 	s := &SpecificDeserializer{}
@@ -110,7 +178,59 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 }
 
 func (s *SpecificDeserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
-	return nil, nil
+	if payload == nil {
+		return nil, nil
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	if _, ok := subjects[fullyQualifiedName]; !ok {
+		return nil, fmt.Errorf("No matching subject found")
+	}
+
+	writer, err := s.toAvroType(info)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := s.MessageFactory(fullyQualifiedName, writer.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	var avroMsg SpecificAvroMessage
+	switch t := msg.(type) {
+	case SpecificAvroMessage:
+		avroMsg = t
+	default:
+		return nil, fmt.Errorf("deserialization target must be an avro message. Got '%v'", t)
+	}
+	reader, err := s.toAvroType(schemaregistry.SchemaInfo{Schema: avroMsg.Schema()})
+	if err != nil {
+		return nil, err
+	}
+	deser, err := compiler.Compile(writer, reader)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(payload[5:])
+
+	if err = vm.Eval(r, deser, avroMsg); err != nil {
+		return nil, err
+	}
+	return avroMsg, nil
 }
 
 func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
