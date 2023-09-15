@@ -108,13 +108,8 @@ func (s *BaseSerializer) ConfigureSerializer(client schemaregistry.Client, serde
 	s.Conf = conf
 	s.SerdeType = serdeType
 
-	if len(conf.SubjectNameStrategy) > 0 {
-		switch conf.SubjectNameStrategy {
-		case "recordNameStrategy":
-			s.SubjectNameStrategy = RecordNameStrategy
-		case "topicRecordNameStrategy":
-			// s.SubjectNameStrategy = TopicNameStrategy
-		}
+	if conf.SubjectNameStrategy == topicRecordNameStrategy {
+		s.SubjectNameStrategy = TopicRecordNameStrategy
 	} else {
 		s.SubjectNameStrategy = TopicNameStrategy
 	}
@@ -146,18 +141,16 @@ func TopicNameStrategy(topic string, serdeType Type, schema schemaregistry.Schem
 	return topic + suffix, nil
 }
 
-// TopicNameStrategy creates a subject name by appending -[key|value] to the topic name.
-// NOTE same as previous func....
-func RecordNameStrategy(subject string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
-
-	// log.Println("seeeeeeeeeeeeee the schema bytes: ", schema.SchemaFullyQualifiedName)
-
+// TopicRecordNameStrategy creates a subject name by appending -[key|value] to the topic name.
+func TopicRecordNameStrategy(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
 	suffix := "-value"
 	if serdeType == KeySerde {
 		suffix = "-key"
 	}
-	// return schema.SchemaFullyQualifiedName + suffix, nil
-	return subject + suffix, nil
+	// TODO how to pass the fullyQualifiedName
+	// fullyQualifiedName := schema.Subject
+	// return fmt.Sprintf("%s-%s%s", topic, fullyQualifiedName, suffix), nil
+	return topic + suffix, nil
 }
 
 // GetID returns a schema ID for the given schema

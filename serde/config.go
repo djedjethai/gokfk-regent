@@ -17,8 +17,6 @@
 package serde
 
 const (
-	topicNameStrategy       = "topicNameStrategy"
-	recordNameStrategy      = "recordNameStrategy"
 	topicRecordNameStrategy = "topicRecordNameStrategy"
 )
 
@@ -48,20 +46,10 @@ func NewSerializerConfig() *SerializerConfig {
 	return c
 }
 
-func NewSerializerConfigSubjectStrategy(st string) *SerializerConfig {
-	c := &SerializerConfig{}
+func NewSerializerConfigTopRecNameStrat() *SerializerConfig {
+	c := NewSerializerConfig()
 
-	c.AutoRegisterSchemas = true
-	c.UseSchemaID = -1
-	c.UseLatestVersion = false
-	c.NormalizeSchemas = false
-
-	switch st {
-	case recordNameStrategy:
-		c.SubjectNameStrategy = recordNameStrategy
-	case topicRecordNameStrategy:
-		c.SubjectNameStrategy = topicRecordNameStrategy
-	}
+	c.SubjectNameStrategy = topicRecordNameStrategy
 
 	return c
 }

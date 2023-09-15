@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	// "reflect"
+	"reflect"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -140,8 +140,7 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 	s, err := jsonschema.NewSerializer(
 		c,
 		serde.ValueSerde,
-		// TODO make that better ...........................................
-		jsonschema.NewSerializerConfigSubjectStrategy("recordNameStrategy"))
+		jsonschema.NewSerializerConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +158,6 @@ func (p *srProducer) ProduceMessage(msg interface{}, topic string) (int64, error
 	// typeName := reflect.TypeOf(msg).String()
 	// log.Println("recordnameStrategy.go - see the fully qualify class name of person", typeName)
 
-	// payload, err := p.serializer.Serialize(topic, msg)
 	payload, err := p.serializer.SerializeRecordName(topic, msg)
 	if err != nil {
 		return nullOffset, err
@@ -243,23 +241,22 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 	}, nil
 }
 
-func (c *srConsumer) RegisterMessageFactoryIntoRecordName(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+// func (c *srConsumer) RegisterMessageFactory(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+//
+// 	return func(subject string, name string) (interface{}, error) {
+//
+// 		// subject have the form: package.Type-value
+// 		if v, ok := subjectTypes[subject]; !ok {
+// 			return nil, errors.New("Invalid receiver")
+// 		} else {
+// 			return v, nil
+// 		}
+// 	}
+// }
 
+func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-
-		// subject have the form: package.Type-value
-		if v, ok := subjectTypes[strings.TrimSuffix(subject, "-value")]; !ok {
-			return nil, errors.New("Invalid receiver")
-		} else {
-			return v, nil
-		}
-	}
-}
-
-// NOTE doing like so make sure the event subject match the expected receiver's subject
-func (c *srConsumer) RegisterMessageFactoryRecordName() func(string, string) (interface{}, error) {
-	return func(subject string, name string) (interface{}, error) {
-		switch strings.TrimSuffix(subject, "-value") {
+		switch subject {
 		case "main.Person":
 			return &Person{}, nil
 		case "main.Address":
@@ -280,33 +277,32 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// case recordNameStrategy
-	msgFQN := "main.Person"
-	addrFQN := "main.Address"
-	embPaxFQN := "main.EmbeddedPax"
-	embFQN := "main.Embedded"
-	ref := make(map[string]interface{})
-	ref[msgFQN] = struct{}{}
-	ref[addrFQN] = struct{}{}
-	ref[embFQN] = struct{}{}
-	ref[embPaxFQN] = struct{}{}
-	c.deserializer.MessageFactory = c.RegisterMessageFactoryRecordName()
-
-	// // case recordIntoNameSTrategy
-	// px := Person{}
-	// addr := Address{}
-	// embPax := EmbeddedPax{}
-	// emb := Embedded{}
-	// msgFQN := reflect.TypeOf(px).String()
-	// addrFQN := reflect.TypeOf(addr).String()
-	// embPaxFQN := reflect.TypeOf(embPax).String()
-	// embFQN := reflect.TypeOf(emb).String()
+	// // case recordNameStrategy
+	// msgFQN := "main.Person"
+	// addrFQN := "main.Address"
+	// embPaxFQN := "main.EmbeddedPax"
+	// embFQN := "main.Embedded"
 	// ref := make(map[string]interface{})
-	// ref[msgFQN] = &px
-	// ref[addrFQN] = &addr
-	// ref[embPaxFQN] = &embPax
-	// ref[embFQN] = &emb
-	// c.deserializer.MessageFactory = c.RegisterMessageFactoryIntoRecordName(ref)
+	// ref[msgFQN] = struct{}{}
+	// ref[addrFQN] = struct{}{}
+	// ref[embFQN] = struct{}{}
+	// ref[embPaxFQN] = struct{}{}
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
+	// case recordIntoNameSTrategy
+	px := Person{}
+	addr := Address{}
+	embPax := EmbeddedPax{}
+	emb := Embedded{}
+	msgFQN := reflect.TypeOf(px).String()
+	addrFQN := reflect.TypeOf(addr).String()
+	embPaxFQN := reflect.TypeOf(embPax).String()
+	embFQN := reflect.TypeOf(emb).String()
+	ref := make(map[string]interface{})
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
+	ref[embPaxFQN] = &embPax
+	ref[embFQN] = &emb
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -314,21 +310,21 @@ func (c *srConsumer) Run(topic string) error {
 			return err
 		}
 
-		// get a msg of type interface{}
-		msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
-		if err != nil {
-			return err
-		}
-		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
-
-		// // use deserializer.DeserializeIntoRecordName to get a struct back
-		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// // get a msg of type interface{}
+		// msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
-		// fmt.Println("message deserialized into: ", px.Name, " - ", addr.Street)
-		// fmt.Println("message deserialized into EmbeddedPax: ", embPax.Name, " - ", embPax.Address.Street)
-		// fmt.Println("message deserialized into Emb: ", emb.Pax.Name, " - ", emb.Pax.Address.Street, " - ", emb.Status)
+		// c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
+
+		// use deserializer.DeserializeIntoRecordName to get a struct back
+		err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("message deserialized into: ", px.Name, " - ", addr.Street)
+		fmt.Println("message deserialized into EmbeddedPax: ", embPax.Name, " - ", embPax.Address.Street)
+		fmt.Println("message deserialized into Emb: ", emb.Pax.Name, " - ", emb.Pax.Address.Street, " - ", emb.Status)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err

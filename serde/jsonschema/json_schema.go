@@ -66,61 +66,6 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		return nil, nil
 	}
 
-	return s.helperRunSerialize(topic, msg)
-}
-
-func (s Serializer) addFieldToStructInterface(someStruct interface{}, fullyQualifiedName string) interface{} {
-	// Use reflection to create a new instance of the struct
-	v := reflect.ValueOf(someStruct)
-	t := v.Type()
-	if t.Kind() != reflect.Struct {
-		log.Println("Input is not a struct")
-	}
-
-	// Function to recursively add fields from embedded structs
-	var addEmbeddedFields func(fields []reflect.StructField, typ reflect.Type) []reflect.StructField
-	addEmbeddedFields = func(fields []reflect.StructField, typ reflect.Type) []reflect.StructField {
-		for i := 0; i < typ.NumField(); i++ {
-			field := typ.Field(i)
-			if field.Anonymous && field.Type.Kind() == reflect.Struct {
-				fields = addEmbeddedFields(fields, field.Type)
-			} else {
-				fields = append(fields, field)
-			}
-		}
-		return fields
-	}
-
-	// Create a slice to hold the new struct field list
-	newFields := addEmbeddedFields(nil, t)
-
-	// Add the new field
-	newFields = append(newFields, reflect.StructField{
-		Name: "FullyQualifiedName",
-		Type: reflect.TypeOf(""),
-		Tag:  reflect.StructTag("json:\"fullyQualifiedName\""),
-	})
-
-	// Create a new type (struct) with the additional field and embedded fields
-	newType := reflect.StructOf(newFields)
-
-	// Create an instance of the new type
-	newStruct := reflect.New(newType).Elem()
-
-	// Copy existing fields, including embedded fields
-	for i := 0; i < t.NumField(); i++ {
-		field := v.Field(i)
-		newField := newStruct.Field(i)
-		newField.Set(field)
-	}
-
-	// Add the new field
-	newStruct.FieldByName("FullyQualifiedName").SetString(fullyQualifiedName)
-
-	return newStruct.Interface()
-}
-
-func (s *Serializer) helperRunSerialize(subject string, msg interface{}) ([]byte, error) {
 	jschema := jsonschema.Reflect(msg)
 
 	raw, err := json.Marshal(jschema)
@@ -133,7 +78,7 @@ func (s *Serializer) helperRunSerialize(subject string, msg interface{}) ([]byte
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(subject, msg, info)
+	id, err := s.GetID(topic, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +110,36 @@ func (s *Serializer) helperRunSerialize(subject string, msg interface{}) ([]byte
 
 }
 
+func (s *Serializer) addFullyQualifiedNameToSchema(jsonBytes []byte, msgFQN string) ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		return nil, err
+	}
+
+	parts := strings.Split(msgFQN, ".")
+	if len(parts) > 0 {
+		var namespace string
+		var name string
+		if len(parts) == 2 {
+			namespace = parts[0]
+			name = parts[1]
+		} else if len(parts) > 2 {
+			for i := 0; i < len(parts)-1; i++ {
+				if i == 0 {
+					namespace += parts[0]
+				} else {
+					namespace += fmt.Sprintf(".%v", parts[i])
+				}
+			}
+			name = parts[len(parts)-1]
+
+		}
+		data["name"] = name
+		data["namespace"] = namespace
+	}
+	return json.Marshal(data)
+}
+
 // SerializeRecordName implements serialization of generic data to JSON
 func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
 	if msg == nil {
@@ -173,11 +148,56 @@ func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byt
 
 	// get the fully qualified name
 	msgFQN := reflect.TypeOf(msg).String()
+	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
-	// test add field
-	msg = s.addFieldToStructInterface(msg, msgFQN)
+	jschema := jsonschema.Reflect(msg)
 
-	return s.helperRunSerialize(msgFQN, msg)
+	// Marshal the schema into a JSON []byte
+	schemaBytes, err := json.Marshal(jschema)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
+	if err != nil {
+		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
+	info := schemaregistry.SchemaInfo{
+		Schema:     string(raw),
+		SchemaType: "JSON",
+	}
+
+	id, err := s.GetID(msgFQN, msg, info)
+	if err != nil {
+		return nil, err
+	}
+	raw, err = json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(raw, &obj)
+		if err != nil {
+			return nil, err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return nil, err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return nil, err
+		}
+	}
+	payload, err := s.WriteBytes(id, raw)
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+
 }
 
 // NewDeserializer creates a JSON deserializer for generic objects
@@ -272,35 +292,26 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 		return nil, nil
 	}
 
-	type Payload struct {
-		FullyQualifiedName string `json:"fullyQualifiedName"`
+	if s.MessageFactory == nil {
+		return nil, fmt.Errorf("MessageFactory func has not been recorded")
 	}
 
-	// get the real payload
-	pl := payload[5:]
-
-	// Create a variable to hold the extracted value
-	var tmp Payload
-
-	// Unmarshal the JSON string into the struct
-	err := json.Unmarshal(pl, &tmp)
-	if err != nil {
-		fmt.Println("Error:", err)
-		// return
-	}
-
-	// Access the extracted value
-	fullyQualifiedName := tmp.FullyQualifiedName
-
-	// make sure the incomming event own the right fullyQualifiedName
-	if _, ok := subjects[fullyQualifiedName]; !ok {
-		return nil, fmt.Errorf("Non matching subject")
-	}
-
-	info, err := s.GetSchema(fullyQualifiedName, payload)
-	// info, err := s.GetSchema("", payload)
+	info, err := s.GetSchema("", payload)
 	if err != nil {
 		return nil, err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	if _, ok := subjects[fullyQualifiedName]; !ok {
+		return nil, fmt.Errorf("No matching subject found")
 	}
 
 	if s.validate {
@@ -319,12 +330,8 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 			return nil, err
 		}
 	}
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
-	if err != nil {
-		return nil, err
-	}
 
-	msg, err := s.MessageFactory(subject, "")
+	msg, err := s.MessageFactory(fullyQualifiedName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -338,9 +345,50 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 
 // DeserializeIntoRecordName deserialize bytes into the map interface{}
 func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
-	_, err := s.DeserializeRecordName(subjects, payload)
+	if payload == nil {
+		return fmt.Errorf("Empty payload")
+	}
 
-	return err
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+	fullyQualifiedName := fmt.Sprintf("%s.%s", data["namespace"].(string), data["name"].(string))
+
+	v, ok := subjects[fullyQualifiedName]
+	if !ok {
+		return fmt.Errorf("No matching subject found")
+	}
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[5:], &obj)
+		if err != nil {
+			return err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = json.Unmarshal(payload[5:], v)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // DeserializeInto implements deserialization of generic data from JSON to the given object

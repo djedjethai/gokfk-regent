@@ -38,9 +38,9 @@ func NewSerializerConfig() *SerializerConfig {
 	return c
 }
 
-func NewSerializerConfigSubjectStrategy(st string) *SerializerConfig {
+func NewSerializerConfigTopRecNameStrat() *SerializerConfig {
 	c := &SerializerConfig{
-		SerializerConfig: *serde.NewSerializerConfigSubjectStrategy(st),
+		SerializerConfig: *serde.NewSerializerConfigTopRecNameStrat(),
 		EnableValidation: false,
 	}
 

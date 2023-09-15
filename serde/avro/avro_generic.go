@@ -20,10 +20,8 @@
 package avro
 
 import (
-	// "fmt"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -61,7 +59,7 @@ func NewGenericSerializer(client schemaregistry.Client, serdeType serde.Type, co
 func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string) ([]byte, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
-		log.Println("Error unmarshaling JSON:", err)
+		return nil, err
 	}
 
 	parts := strings.Split(msgFQN, ".")
@@ -105,7 +103,7 @@ func (s *GenericSerializer) SerializeRecordName(subject string, msg interface{})
 
 	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroType.String(), msgFQN)
 	if err != nil {
-		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+		return nil, err
 	}
 
 	info := schemaregistry.SchemaInfo{
@@ -187,7 +185,7 @@ func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interfac
 	// recreate the fullyQualifiedName
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
-		log.Println("Error unmarshaling JSON:", err)
+		return nil, err
 	}
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
@@ -228,7 +226,7 @@ func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]inte
 	// recreate the fullyQualifiedName
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
-		log.Println("Error unmarshaling JSON:", err)
+		return err
 	}
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
@@ -263,7 +261,7 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 		return nil, err
 	}
 
-	log.Println("avro_generic.go - Deserialize - info: ", info)
+	fmt.Println("avro_generic.go - Deserialize - info: ", info)
 
 	writer, name, err := s.toType(info)
 	if err != nil {
