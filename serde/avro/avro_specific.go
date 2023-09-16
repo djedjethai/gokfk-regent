@@ -258,6 +258,55 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 }
 
 func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
+	if payload == nil {
+		return nil
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		return err
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	v, ok := subjects[fullyQualifiedName]
+	if !ok {
+		return fmt.Errorf("No matching subject found")
+	}
+
+	writer, err := s.toAvroType(info)
+	if err != nil {
+		return err
+	}
+
+	var avroMsg SpecificAvroMessage
+	switch t := v.(type) {
+	case SpecificAvroMessage:
+		avroMsg = t
+	default:
+		return fmt.Errorf("deserialization target must be an avro message. Got '%v'", t)
+	}
+	reader, err := s.toAvroType(schemaregistry.SchemaInfo{Schema: avroMsg.Schema()})
+	if err != nil {
+		return err
+	}
+	deser, err := compiler.Compile(writer, reader)
+	if err != nil {
+		return err
+	}
+	r := bytes.NewReader(payload[5:])
+
+	if err = vm.Eval(r, deser, avroMsg); err != nil {
+		return err
+	}
+
 	return nil
 }
 

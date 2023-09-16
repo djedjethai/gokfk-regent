@@ -244,14 +244,16 @@ func (c *srConsumer) Run(topic string) error {
 	// case DeserializeRecordName
 	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
-	// // case DeserializeIntoRecordName(no need RegisterMessageFactory)
-	// ref := make(map[string]interface{})
-	// px := Person{}
-	// addr := Address{}
-	// msgFQN := reflect.TypeOf(px).String()
+	// case DeserializeIntoRecordName(no need RegisterMessageFactory)
+	ref := make(map[string]interface{})
+	px := avSch.Person{}
+	addr := avSch.Address{}
+	msgFQN := "personrecord.Person"
+	addrFQN := "addressrecord.Address"
+	// msgFQN := reflect.TypeOf(px).String() // does not work, has we care the avro namespace
 	// addrFQN := reflect.TypeOf(addr).String()
-	// ref[msgFQN] = &px
-	// ref[addrFQN] = &addr
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -259,20 +261,20 @@ func (c *srConsumer) Run(topic string) error {
 			return err
 		}
 
-		// get a msg of type interface{}
-		msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
-		if err != nil {
-			return err
-		}
-		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
-
-		// // use deserializer.DeserializeInto to get a struct back
-		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// // get a msg of type interface{}
+		// msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
-		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
-		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+		// c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
+
+		// use deserializer.DeserializeInto to get a struct back
+		err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err
