@@ -177,7 +177,7 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 	return s, nil
 }
 
-func (s *SpecificDeserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}
@@ -195,10 +195,6 @@ func (s *SpecificDeserializer) DeserializeRecordName(subjects map[string]interfa
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-
-	if _, ok := subjects[fullyQualifiedName]; !ok {
-		return nil, fmt.Errorf("No matching subject found")
-	}
 
 	writer, err := s.toAvroType(info)
 	if err != nil {

@@ -79,16 +79,16 @@ func producer() {
 		City:   "Berlin",
 	}
 
-	px := EmbeddedPax{
-		Name:    "robert",
-		Age:     23,
-		Address: addr,
-	}
+	// px := EmbeddedPax{
+	// 	Name:    "robert",
+	// 	Age:     23,
+	// 	Address: addr,
+	// }
 
-	embedded := Embedded{
-		Pax:    px,
-		Status: "embedded",
-	}
+	// embedded := Embedded{
+	// 	Pax:    px,
+	// 	Status: "embedded",
+	// }
 
 	for {
 		offset, err := producer.ProduceMessage(msg, topic)
@@ -101,15 +101,15 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		offset, err = producer.ProduceMessage(px, topic)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
+		// offset, err = producer.ProduceMessage(px, topic)
+		// if err != nil {
+		// 	log.Println("Error producing Message: ", err)
+		// }
 
-		offset, err = producer.ProduceMessage(embedded, topic)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
+		// offset, err = producer.ProduceMessage(embedded, topic)
+		// if err != nil {
+		// 	log.Println("Error producing Message: ", err)
+		// }
 
 		log.Println("Message produced, offset is: ", offset)
 		time.Sleep(2 * time.Second)
@@ -256,7 +256,7 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 
 func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-		switch subject {
+		switch name {
 		case "main.Person":
 			return &Person{}, nil
 		case "main.Address":
@@ -277,16 +277,7 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// // case recordNameStrategy
-	// msgFQN := "main.Person"
-	// addrFQN := "main.Address"
-	// embPaxFQN := "main.EmbeddedPax"
-	// embFQN := "main.Embedded"
-	// ref := make(map[string]interface{})
-	// ref[msgFQN] = struct{}{}
-	// ref[addrFQN] = struct{}{}
-	// ref[embFQN] = struct{}{}
-	// ref[embPaxFQN] = struct{}{}
+	// case recordNameStrategy
 	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 	// case recordIntoNameSTrategy
@@ -311,7 +302,7 @@ func (c *srConsumer) Run(topic string) error {
 		}
 
 		// // get a msg of type interface{}
-		// msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
+		// msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
@@ -323,8 +314,8 @@ func (c *srConsumer) Run(topic string) error {
 			return err
 		}
 		fmt.Println("message deserialized into: ", px.Name, " - ", addr.Street)
-		fmt.Println("message deserialized into EmbeddedPax: ", embPax.Name, " - ", embPax.Address.Street)
-		fmt.Println("message deserialized into Emb: ", emb.Pax.Name, " - ", emb.Pax.Address.Street, " - ", emb.Status)
+		// fmt.Println("message deserialized into EmbeddedPax: ", embPax.Name, " - ", embPax.Address.Street)
+		// fmt.Println("message deserialized into Emb: ", emb.Pax.Name, " - ", emb.Pax.Address.Street, " - ", emb.Status)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err

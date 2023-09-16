@@ -209,6 +209,7 @@ func NewDeserializer(client schemaregistry.Client, serdeType serde.Type, conf *D
 	if err != nil {
 		return nil, err
 	}
+	s.MessageFactory = s.jsonMessageFactory
 	return s, nil
 }
 
@@ -287,14 +288,14 @@ func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (s
 }
 
 // DeserializeRecordName deserialise bytes
-func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}
 
-	if s.MessageFactory == nil {
-		return nil, fmt.Errorf("MessageFactory func has not been recorded")
-	}
+	// if s.MessageFactory == nil {
+	// 	return nil, fmt.Errorf("MessageFactory func has not been recorded")
+	// }
 
 	info, err := s.GetSchema("", payload)
 	if err != nil {
@@ -309,10 +310,6 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-
-	if _, ok := subjects[fullyQualifiedName]; !ok {
-		return nil, fmt.Errorf("No matching subject found")
-	}
 
 	if s.validate {
 		// Need to unmarshal to pure interface
@@ -331,7 +328,12 @@ func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, pa
 		}
 	}
 
-	msg, err := s.MessageFactory(fullyQualifiedName, name)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := s.MessageFactory(subject, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -438,4 +440,9 @@ func toJSONSchema(c schemaregistry.Client, schema schemaregistry.SchemaInfo) (*j
 		return nil, err
 	}
 	return compiler.Compile(url)
+}
+
+func (s *Deserializer) jsonMessageFactory(subject string, name string) (interface{}, error) {
+	var msg map[string]interface{}
+	return &msg, nil
 }

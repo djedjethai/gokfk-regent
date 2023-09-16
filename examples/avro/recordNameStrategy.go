@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	// "reflect"
+	"reflect"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -211,7 +211,7 @@ func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{},
 	return func(subject string, name string) (interface{}, error) {
 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - subject: ", subject)
 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - name: ", name)
-		switch subject {
+		switch name {
 		case "main.Person":
 			return &Person{}, nil
 		case "main.Address":
@@ -222,7 +222,6 @@ func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{},
 	}
 }
 
-// // NOTE doing like so make sure the event subject match the expected receiver's subject
 // func (c *srConsumer) RegisterMessageFactory(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
 // 	return func(subject string, name string) (interface{}, error) {
 // 		if tp, ok := subjectTypes[subject]; !ok {
@@ -240,22 +239,17 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
+	// case DeserializeRecordName(facultatif)
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
+	// case DeserializeIntoRecordName(no need RegisterMessageFactory)
 	ref := make(map[string]interface{})
-
-	// case DeserializeRecordName
-	msgFQN := "main.Person"
-	addrFQN := "main.Address"
-	ref[msgFQN] = struct{}{}
-	ref[addrFQN] = struct{}{}
-	c.deserializer.MessageFactory = c.RegisterMessageFactory()
-
-	// // case DeserializeIntoRecordName(no need RegisterMessageFactory)
-	// px := Person{}
-	// addr := Address{}
-	// msgFQN := reflect.TypeOf(px).String()
-	// addrFQN := reflect.TypeOf(addr).String()
-	// ref[msgFQN] = &px
-	// ref[addrFQN] = &addr
+	px := Person{}
+	addr := Address{}
+	msgFQN := reflect.TypeOf(px).String()
+	addrFQN := reflect.TypeOf(addr).String()
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -263,20 +257,20 @@ func (c *srConsumer) Run(topic string) error {
 			return err
 		}
 
-		// get a msg of type interface{}
-		msg, err := c.deserializer.DeserializeRecordName(ref, kafkaMsg.Value)
-		if err != nil {
-			return err
-		}
-		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
-
-		// // use deserializer.DeserializeInto to get a struct back
-		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// // get a msg of type interface{}
+		// msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
-		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
-		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+		// c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
+
+		// use deserializer.DeserializeInto to get a struct back
+		err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err

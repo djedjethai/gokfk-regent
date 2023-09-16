@@ -403,7 +403,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 }
 
 // DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
-func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
 	}

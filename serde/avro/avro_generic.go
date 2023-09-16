@@ -31,6 +31,7 @@ import (
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
 	"github.com/heetch/avro"
+	"github.com/linkedin/goavro"
 )
 
 // GenericSerializer represents a generic Avro serializer
@@ -165,16 +166,13 @@ func NewGenericDeserializer(client schemaregistry.Client, serdeType serde.Type, 
 	if err != nil {
 		return nil, err
 	}
+	s.MessageFactory = s.avroMessageFactory
 	return s, nil
 }
 
-func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
-	}
-
-	if s.MessageFactory == nil {
-		return nil, fmt.Errorf("MessageFactory func has not been recorded")
 	}
 
 	info, err := s.GetSchema("", payload)
@@ -191,21 +189,40 @@ func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interfac
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
 
-	if _, ok := subjects[fullyQualifiedName]; !ok {
-		return nil, fmt.Errorf("No matching subject found")
-	}
+	// fmt.Println("see the info schema: ", info.Schema)
 
 	writer, name, err := s.toType(info)
 	if err != nil {
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(fullyQualifiedName, name)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
 	if err != nil {
 		return nil, err
 	}
+
+	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	if err != nil {
+		return nil, err
+	}
+
+	if msg == struct{}{} {
+		codec, err := goavro.NewCodec(info.Schema)
+		if err != nil {
+			return nil, err
+		}
+
+		native, _, err := codec.NativeFromBinary(payload[5:])
+		if err != nil {
+			return nil, err
+		}
+
+		return native, nil
+	}
+
 	_, err = avro.Unmarshal(payload[5:], msg, writer)
 	return msg, err
+
 }
 
 func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
@@ -299,6 +316,11 @@ func (s *GenericDeserializer) toType(schema schemaregistry.SchemaInfo) (*avro.Ty
 func (s *GenericDeserializer) toAvroType(schema schemaregistry.SchemaInfo) (schema.AvroType, error) {
 	ns := parser.NewNamespace(false)
 	return resolveAvroReferences(s.Client, schema, ns)
+}
+
+func (s *GenericDeserializer) avroMessageFactory(subject string, name string) (interface{}, error) {
+
+	return struct{}{}, nil
 }
 
 // From https://stackoverflow.com/questions/42664837/how-to-access-unexported-struct-fields/43918797#43918797

@@ -73,7 +73,7 @@ type Deserializer interface {
 	// DeserializeInto will unmarshal data into the given object.
 	DeserializeInto(topic string, payload []byte, msg interface{}) error
 
-	DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error)
+	DeserializeRecordName(payload []byte) (interface{}, error)
 	DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
 
 	Close()
