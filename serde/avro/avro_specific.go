@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
+	// "reflect"
 	"strings"
 
 	"github.com/actgardner/gogen-avro/v10/compiler"
@@ -34,6 +34,7 @@ import (
 	"github.com/actgardner/gogen-avro/v10/vm/types"
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
+	"github.com/linkedin/goavro"
 )
 
 // SpecificSerializer represents a specific Avro serializer
@@ -98,13 +99,14 @@ func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, e
 	return payload, nil
 }
 
-func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string) ([]byte, error) {
+func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string) ([]byte, string, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
 		fmt.Println("Error unmarshaling JSON:", err)
 	}
 
-	parts := strings.Split(msgFQN, ".")
+	var fullyQualifiedName string
+	parts := strings.Split(data["name"].(string), ".")
 	if len(parts) > 0 {
 		var namespace string
 		if len(parts) == 2 {
@@ -119,9 +121,16 @@ func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN strin
 			}
 
 		}
+		data["name"] = parts[len(parts)-1]
 		data["namespace"] = namespace
+		fullyQualifiedName = fmt.Sprintf("%v.%v", namespace, data["name"])
 	}
-	return json.Marshal(data)
+	modifiedJSON, err := json.Marshal(data)
+	if err != nil {
+		return nil, fullyQualifiedName, err
+	}
+
+	return modifiedJSON, fullyQualifiedName, nil
 }
 
 // Serialize implements serialization of generic Avro data
@@ -129,9 +138,6 @@ func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}
 	if msg == nil {
 		return nil, nil
 	}
-
-	msgFQN := reflect.TypeOf(msg).String()
-	msgFQN = strings.TrimLeft(msgFQN, "*")
 
 	var avroMsg SpecificAvroMessage
 	switch t := msg.(type) {
@@ -141,7 +147,7 @@ func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}
 		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
 	}
 
-	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msgFQN)
+	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema())
 	if err != nil {
 		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
 	}
@@ -151,7 +157,7 @@ func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}
 		Schema: string(modifiedJSON),
 	}
 
-	id, err = s.GetID(subject, avroMsg, info)
+	id, err = s.GetID(msgFQN, avroMsg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +180,7 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 	if err != nil {
 		return nil, err
 	}
+	s.MessageFactory = s.avroMessageFactory
 	return s, nil
 }
 
@@ -196,14 +203,35 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
 
+	fmt.Println("avro_specific.go - DerializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
+
 	writer, err := s.toAvroType(info)
 	if err != nil {
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(fullyQualifiedName, writer.Name())
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
 	if err != nil {
 		return nil, err
+	}
+
+	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	if err != nil {
+		return nil, err
+	}
+
+	if msg == struct{}{} {
+		codec, err := goavro.NewCodec(info.Schema)
+		if err != nil {
+			return nil, err
+		}
+
+		native, _, err := codec.NativeFromBinary(payload[5:])
+		if err != nil {
+			return nil, err
+		}
+
+		return native, nil
 	}
 
 	var avroMsg SpecificAvroMessage
@@ -312,4 +340,8 @@ func (s *SpecificDeserializer) DeserializeInto(topic string, payload []byte, msg
 func (s *SpecificDeserializer) toAvroType(schema schemaregistry.SchemaInfo) (schema.AvroType, error) {
 	ns := parser.NewNamespace(false)
 	return resolveAvroReferences(s.Client, schema, ns)
+}
+
+func (s *SpecificDeserializer) avroMessageFactory(subject string, name string) (interface{}, error) {
+	return struct{}{}, nil
 }
