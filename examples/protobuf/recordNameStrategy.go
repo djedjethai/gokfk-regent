@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	pb "examples/api/v1/proto"
 	"fmt"
 	"os"
@@ -216,9 +217,18 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 	}, nil
 }
 
-// RegisterMessage add simpleHandler and register schema in SR
-func (c *srConsumer) RegisterMessage(messageType protoreflect.MessageType) error {
-	return nil
+// RegisterMessageFactory will overwrite the default one
+// In this case &pb.Person{} is the "msg" at "msg, err := c.deserializer.DeserializeRecordName()"
+func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
+	return func(subject string, name string) (interface{}, error) {
+		switch name {
+		case subjectPerson:
+			return &pb.Person{}, nil
+		case subjectAddress:
+			return &pb.Address{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
 }
 
 // Run consumer
@@ -241,6 +251,10 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string, 
 		if err != nil {
 			return err
 		}
+
+		// register the MessageFactory
+		// this is facultatif
+		// c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 		msg, err := c.deserializer.DeserializeRecordName(subjects, kafkaMsg.Value)
 		if err != nil {
@@ -271,7 +285,6 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string, 
 
 func (c *srConsumer) handleMessageAsInterface(message interface{}, offset int64) {
 	fmt.Printf("message %v with offset %d\n", message, offset)
-
 }
 
 // Close all connections

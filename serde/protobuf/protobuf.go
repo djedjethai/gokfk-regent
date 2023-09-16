@@ -383,56 +383,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	return s.deserializePayload(bytesRead, messageDesc, topic, info, payload)
-}
-
-// DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
-func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
-	if payload == nil {
-		return nil, nil
-	}
-
-	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
-	if err != nil {
-		return nil, err
-	}
-
-	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
-
-	if _, ok := subjects[msgFullyQlfName]; ok {
-		return s.deserializePayload(bytesRead, messageDesc, msgFullyQlfName, info, payload)
-	} else {
-		return nil, fmt.Errorf("Invalid fullyQualifiedName")
-	}
-}
-
-func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
-
-	var info = schemaregistry.SchemaInfo{}
-	info, err := s.GetSchema(subject, payload)
-	if err != nil {
-		return 0, nil, info, err
-	}
-
-	fd, err := s.toFileDesc(info)
-	if err != nil {
-		return 0, nil, info, err
-	}
-	bytesRead, msgIndexes, err := readMessageIndexes(payload[5:])
-	if err != nil {
-		return 0, nil, info, err
-	}
-	messageDesc, err := toMessageDesc(fd, msgIndexes)
-	if err != nil {
-		return 0, nil, info, err
-	}
-
-	return bytesRead, messageDesc, info, nil
-}
-
-func (s *Deserializer) deserializePayload(bytesRead int, messageDesc *desc.MessageDescriptor, subject string, info schemaregistry.SchemaInfo, payload []byte) (interface{}, error) {
-
-	subject, err := s.SubjectNameStrategy(subject, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
 	if err != nil {
 		return nil, err
 	}
@@ -449,6 +400,65 @@ func (s *Deserializer) deserializePayload(bytesRead int, messageDesc *desc.Messa
 	}
 	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
 	return protoMsg, err
+}
+
+// DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
+func (s *Deserializer) DeserializeRecordName(subjects map[string]interface{}, payload []byte) (interface{}, error) {
+	if payload == nil {
+		return nil, nil
+	}
+
+	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
+
+	subject, err := s.SubjectNameStrategy(msgFullyQlfName, s.SerdeType, info)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := s.MessageFactory(subject, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+	var protoMsg proto.Message
+	switch t := msg.(type) {
+	case proto.Message:
+		protoMsg = t
+	default:
+		return nil, fmt.Errorf("deserialization target must be a protobuf message. Got '%v'", t)
+	}
+	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+	return protoMsg, err
+}
+
+func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
+
+	var info = schemaregistry.SchemaInfo{}
+	info, err := s.GetSchema(subject, payload)
+	if err != nil {
+		return 0, nil, info, err
+	}
+
+	fmt.Println("protobuf.go - DeserializeRecordName - info: ", info)
+
+	fd, err := s.toFileDesc(info)
+	if err != nil {
+		return 0, nil, info, err
+	}
+	bytesRead, msgIndexes, err := readMessageIndexes(payload[5:])
+	if err != nil {
+		return 0, nil, info, err
+	}
+	messageDesc, err := toMessageDesc(fd, msgIndexes)
+	if err != nil {
+		return 0, nil, info, err
+	}
+
+	return bytesRead, messageDesc, info, nil
 }
 
 // DeserializeInto implements deserialization of Protobuf data to the given object

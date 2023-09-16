@@ -89,7 +89,7 @@ func (s *GenericSerializer) SerializeRecordName(subject string, msg interface{})
 	}
 
 	msgFQN := reflect.TypeOf(msg).String()
-	msgFQN = strings.TrimLeft(msgFQN, "*")
+	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
 	val := reflect.ValueOf(msg)
 	if val.Kind() == reflect.Ptr {
@@ -200,11 +200,6 @@ func (s *GenericDeserializer) DeserializeRecordName(subjects map[string]interfac
 		return nil, err
 	}
 
-	// // TODO change the SubjectNameStrategy
-	// subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	msg, err := s.MessageFactory(fullyQualifiedName, name)
 	if err != nil {
 		return nil, err
@@ -241,11 +236,6 @@ func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]inte
 	if err != nil {
 		return err
 	}
-
-	// msg, err := s.MessageFactory(fullyQualifiedName, name)
-	// if err != nil {
-	// 	return err
-	// }
 
 	_, err = avro.Unmarshal(payload[5:], v, writer)
 	return err
