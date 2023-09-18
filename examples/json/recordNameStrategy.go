@@ -91,12 +91,12 @@ func producer() {
 	// }
 
 	for {
-		offset, err := producer.ProduceMessage(msg, topic)
+		offset, err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
 
-		offset, err = producer.ProduceMessage(addr, topic)
+		offset, err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -118,7 +118,7 @@ func producer() {
 
 // SRProducer interface
 type SRProducer interface {
-	ProduceMessage(msg interface{}, topic string) (int64, error)
+	ProduceMessage(msg interface{}, topic, subject string) (int64, error)
 	Close()
 }
 
@@ -151,14 +151,14 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 }
 
 // ProduceMessage sends serialized message to kafka using schema registry
-func (p *srProducer) ProduceMessage(msg interface{}, topic string) (int64, error) {
+func (p *srProducer) ProduceMessage(msg interface{}, topic, subject string) (int64, error) {
 	kafkaChan := make(chan kafka.Event)
 	defer close(kafkaChan)
 
 	// typeName := reflect.TypeOf(msg).String()
 	// log.Println("recordnameStrategy.go - see the fully qualify class name of person", typeName)
 
-	payload, err := p.serializer.SerializeRecordName(topic, msg)
+	payload, err := p.serializer.SerializeRecordName(subject, msg)
 	if err != nil {
 		return nullOffset, err
 	}

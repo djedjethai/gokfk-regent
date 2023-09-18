@@ -246,28 +246,21 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string, 
 		}
 	}
 
+	// register the MessageFactory
+	// this is facultatif
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
 		if err != nil {
 			return err
 		}
 
-		// register the MessageFactory
-		// this is facultatif
-		// c.deserializer.MessageFactory = c.RegisterMessageFactory()
-
 		// msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
 		// if err != nil {
 		// 	return err
 		// }
 		// c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
-
-		// could instanciate a second map(or overwrite the previous one)
-		subjects := make(map[string]interface{})
-		person := &pb.Person{}
-		subjects[subjectPerson] = person
-		address := &pb.Address{}
-		subjects[subjectAddress] = address
 
 		err = c.deserializer.DeserializeIntoRecordName(subjects, kafkaMsg.Value)
 		if err != nil {

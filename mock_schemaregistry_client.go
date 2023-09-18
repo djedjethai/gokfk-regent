@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -58,6 +59,8 @@ type mockclient struct {
 	schemaToIdCacheLock      sync.RWMutex
 	idToSchemaCache          map[subjectID]*SchemaInfo
 	idToSchemaCacheLock      sync.RWMutex
+	idCache                  map[subjectOnlyID]*SchemaInfo
+	idCacheLock              sync.RWMutex
 	schemaToVersionCache     map[subjectJSON]versionCacheEntry
 	schemaToVersionCacheLock sync.RWMutex
 	compatibilityCache       map[string]Compatibility
@@ -73,6 +76,13 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	if err != nil {
 		return -1, err
 	}
+
+	// to differenciate topic from recordName
+	parts := strings.Split(subject, ":")
+	if len(parts) > 0 {
+		subject = parts[0]
+	}
+
 	cacheKey := subjectJSON{
 		subject: subject,
 		json:    string(schemaJSON),
@@ -87,13 +97,59 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return idCacheEntryVal.id, nil
 	}
 
-	id, err = c.getIDFromRegistry(subject, schema)
-	if err != nil {
-		return -1, err
+	if len(parts) > 0 && parts[len(parts)-1] == "recordName-value" {
+		// case of recordName
+		id, err = c.getIDFromRegistryRecordName(parts[0], idCacheEntryVal.id, schema)
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		id, err = c.getIDFromRegistry(subject, schema)
+		if err != nil {
+			return -1, err
+		}
 	}
+
 	c.schemaToIdCacheLock.Lock()
 	c.schemaToIdCache[cacheKey] = idCacheEntry{id, false}
 	c.schemaToIdCacheLock.Unlock()
+
+	return id, nil
+}
+
+func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema SchemaInfo) (int, error) {
+
+	if id < 1 {
+		id = -1
+	}
+	c.idCacheLock.RLock()
+	for key, _ := range c.idCache {
+		if key.id == id {
+			id = key.id
+			break
+		}
+	}
+
+	c.idCacheLock.RUnlock()
+	err := c.generateVersion(subject, schema)
+	if err != nil {
+		return -1, err
+	}
+	if id < 0 {
+		id = c.counter.increment()
+		id += len(c.idCache)
+		idCacheKey := subjectOnlyID{
+			id: id,
+		}
+
+		c.idCacheLock.Lock()
+		if c.idCache == nil {
+			c.idCache = make(map[subjectOnlyID]*SchemaInfo)
+		}
+		c.idCache[idCacheKey] = &schema
+		c.idCacheLock.Unlock()
+	}
+
 	return id, nil
 }
 
@@ -148,7 +204,26 @@ func (c *mockclient) generateVersion(subject string, schema SchemaInfo) error {
 
 // TODO to implement
 func (c *mockclient) GetByID(id int) (schema SchemaInfo, err error) {
-	return SchemaInfo{}, nil
+	cacheKey := subjectOnlyID{
+		id: id,
+	}
+	c.idCacheLock.RLock()
+	info, ok := c.idCache[cacheKey]
+	c.idCacheLock.RUnlock()
+	if ok {
+		return *info, nil
+	}
+	subject := ""
+	posErr := url.Error{
+		Op: "GET",
+		// TODO
+		// URL: c.url.String() + fmt.Sprintf(schemasByID, id, id),
+		URL: c.url.String() + fmt.Sprintf(schemasBySubject, id, url.QueryEscape(subject)),
+		Err: errors.New("Subject Not Found"),
+	}
+	return SchemaInfo{}, &posErr
+
+	// return SchemaInfo{}, nil
 }
 
 // GetBySubjectAndID returns the schema identified by id
