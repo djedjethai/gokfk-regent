@@ -97,16 +97,29 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return idCacheEntryVal.id, nil
 	}
 
-	if len(parts) > 0 && parts[len(parts)-1] == "recordName-value" {
+	if parts[len(parts)-1] == "recordName-value" {
+		// works with protobub
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 		id, err = c.getIDFromRegistryRecordName(parts[0], idCacheEntryVal.id, schema)
 		if err != nil {
 			return -1, err
 		}
 	} else {
-		id, err = c.getIDFromRegistry(subject, schema)
-		if err != nil {
-			return -1, err
+		// differenciate jsonschema from avro
+		parts = strings.Split(subject, ".")
+		if parts[0] == "jsonschema" {
+
+			// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
+			id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)
+			if err != nil {
+				return -1, err
+			}
+		} else {
+
+			id, err = c.getIDFromRegistry(subject, schema)
+			if err != nil {
+				return -1, err
+			}
 		}
 	}
 

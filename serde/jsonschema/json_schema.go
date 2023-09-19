@@ -293,10 +293,6 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, nil
 	}
 
-	// if s.MessageFactory == nil {
-	// 	return nil, fmt.Errorf("MessageFactory func has not been recorded")
-	// }
-
 	info, err := s.GetSchema("", payload)
 	if err != nil {
 		return nil, err

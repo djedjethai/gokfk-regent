@@ -20,115 +20,16 @@
 package jsonschema
 
 import (
+	"fmt"
+	// "reflect"
 	"testing"
 
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
-	"github.com/djedjethai/kfk-schemaregistry/test"
+	// "github.com/djedjethai/kfk-schemaregistry/test"
 )
 
-func TestJSONSchemaSerdeWithSimple(t *testing.T) {
-	serde.MaybeFail = serde.InitFailFunc(t)
-	var err error
-	conf := schemaregistry.NewConfig("mock://")
-
-	client, err := schemaregistry.NewClient(conf)
-	serde.MaybeFail("Schema Registry configuration", err)
-
-	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
-	serde.MaybeFail("Serializer configuration", err)
-
-	obj := JSONDemoSchema{}
-	obj.IntField = 123
-	obj.DoubleField = 45.67
-	obj.StringField = "hi"
-	obj.BoolField = true
-	obj.BytesField = []byte{0, 0, 0, 1}
-	bytes, err := ser.Serialize("topic1", &obj)
-	serde.MaybeFail("serialization", err)
-
-	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-	serde.MaybeFail("Deserializer configuration", err)
-	deser.Client = ser.Client
-
-	var newobj JSONDemoSchema
-	err = deser.DeserializeInto("topic1", bytes, &newobj)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj, obj))
-}
-
-func TestJSONSchemaSerdeWithNested(t *testing.T) {
-	serde.MaybeFail = serde.InitFailFunc(t)
-	var err error
-	conf := schemaregistry.NewConfig("mock://")
-
-	client, err := schemaregistry.NewClient(conf)
-	serde.MaybeFail("Schema Registry configuration", err)
-
-	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
-	serde.MaybeFail("Serializer configuration", err)
-
-	nested := JSONDemoSchema{}
-	nested.IntField = 123
-	nested.DoubleField = 45.67
-	nested.StringField = "hi"
-	nested.BoolField = true
-	nested.BytesField = []byte{0, 0, 0, 1}
-	obj := JSONNestedTestRecord{
-		OtherField: nested,
-	}
-	bytes, err := ser.Serialize("topic1", &obj)
-	serde.MaybeFail("serialization", err)
-
-	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-	serde.MaybeFail("Deserializer configuration", err)
-	deser.Client = ser.Client
-
-	var newobj JSONNestedTestRecord
-	err = deser.DeserializeInto("topic1", bytes, &newobj)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj, obj))
-}
-
-type JSONDemoSchema struct {
-	IntField int32 `json:"IntField"`
-
-	DoubleField float64 `json:"DoubleField"`
-
-	StringField string `json:"StringField"`
-
-	BoolField bool `json:"BoolField"`
-
-	BytesField test.Bytes `json:"BytesField"`
-}
-
-type JSONNestedTestRecord struct {
-	OtherField JSONDemoSchema
-}
-
-type JSONLinkedList struct {
-	Value int32
-	Next  *JSONLinkedList
-}
-
-// const (
-// 	linkedList    = "test.LinkedList"
-// 	linkedListRN  = "test.LinkedList:recordName"
-// 	pizza         = "test.Pizza"
-// 	pizzaRN       = "test.Pizza:recordName"
-// 	invalidSchema = "invalidSchema"
-// )
-//
-// var (
-// 	inner = test.LinkedList{
-// 		Value: 100,
-// 	}
-//
-// 	obj = test.Pizza{
-// 		Size:     "Extra extra large",
-// 		Toppings: []string{"anchovies", "mushrooms"},
-// 	}
-// )
-//
-// func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
+// func TestJSONSchemaSerdeWithSimple(t *testing.T) {
 // 	serde.MaybeFail = serde.InitFailFunc(t)
 // 	var err error
 // 	conf := schemaregistry.NewConfig("mock://")
@@ -139,26 +40,155 @@ type JSONLinkedList struct {
 // 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 // 	serde.MaybeFail("Serializer configuration", err)
 //
-// 	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+// 	obj := JSONDemoSchema{}
+// 	obj.IntField = 123
+// 	obj.DoubleField = 45.67
+// 	obj.StringField = "hi"
+// 	obj.BoolField = true
+// 	obj.BytesField = []byte{0, 0, 0, 1}
+// 	bytes, err := ser.Serialize("topic1", &obj)
 // 	serde.MaybeFail("serialization", err)
 //
 // 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
 // 	serde.MaybeFail("Deserializer configuration", err)
 // 	deser.Client = ser.Client
 //
-// 	deser.ProtoRegistry.RegisterMessage(inner.ProtoReflect().Type())
-// 	deser.ProtoRegistry.RegisterMessage(obj.ProtoReflect().Type())
-//
-// 	newobj, err := deser.DeserializeRecordName(bytesInner)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(proto.Message).ProtoReflect(), inner.ProtoReflect()))
-//
-// 	newobj, err = deser.DeserializeRecordName(bytesObj)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(proto.Message).ProtoReflect(), obj.ProtoReflect()))
+// 	var newobj JSONDemoSchema
+// 	err = deser.DeserializeInto("topic1", bytes, &newobj)
+// 	serde.MaybeFail("deserialization", err, serde.Expect(newobj, obj))
 // }
+//
+// func TestJSONSchemaSerdeWithNested(t *testing.T) {
+// 	serde.MaybeFail = serde.InitFailFunc(t)
+// 	var err error
+// 	conf := schemaregistry.NewConfig("mock://")
+//
+// 	client, err := schemaregistry.NewClient(conf)
+// 	serde.MaybeFail("Schema Registry configuration", err)
+//
+// 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+// 	serde.MaybeFail("Serializer configuration", err)
+//
+// 	nested := JSONDemoSchema{}
+// 	nested.IntField = 123
+// 	nested.DoubleField = 45.67
+// 	nested.StringField = "hi"
+// 	nested.BoolField = true
+// 	nested.BytesField = []byte{0, 0, 0, 1}
+// 	obj := JSONNestedTestRecord{
+// 		OtherField: nested,
+// 	}
+// 	bytes, err := ser.Serialize("topic1", &obj)
+// 	serde.MaybeFail("serialization", err)
+//
+// 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+// 	serde.MaybeFail("Deserializer configuration", err)
+// 	deser.Client = ser.Client
+//
+// 	var newobj JSONNestedTestRecord
+// 	err = deser.DeserializeInto("topic1", bytes, &newobj)
+// 	serde.MaybeFail("deserialization", err, serde.Expect(newobj, obj))
+// }
+//
+// type JSONDemoSchema struct {
+// 	IntField int32 `json:"IntField"`
+//
+// 	DoubleField float64 `json:"DoubleField"`
+//
+// 	StringField string `json:"StringField"`
+//
+// 	BoolField bool `json:"BoolField"`
+//
+// 	BytesField test.Bytes `json:"BytesField"`
+// }
+//
+// type JSONNestedTestRecord struct {
+// 	OtherField JSONDemoSchema
+// }
+//
+// type JSONLinkedList struct {
+// 	Value int32
+// 	Next  *JSONLinkedList
+// }
+
+const (
+	linkedList    = "jsonschema.LinkedList"
+	linkedListRN  = "jsonschema.LinkedList:recordName"
+	pizza         = "jsonschema.Pizza"
+	pizzaRN       = "jsonschema.Pizza:recordName"
+	invalidSchema = "invalidSchema"
+)
+
+type LinkedList struct {
+	Value int
+}
+
+type Pizza struct {
+	Size     string
+	Toppings []string
+}
+
+var (
+	inner = LinkedList{
+		Value: 100,
+	}
+
+	obj = Pizza{
+		Size:     "Extra extra large",
+		Toppings: []string{"anchovies", "mushrooms"},
+	}
+)
+
+func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	serde.MaybeFail("serialization", err)
+
+	// bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	// serde.MaybeFail("serialization", err)
+
+	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+
+	newobj, err := deser.DeserializeRecordName(bytesInner)
+	serde.MaybeFail("deserialization", err)
+	// access the newobj payload
+	if objPtr, ok := newobj.(*map[string]interface{}); ok {
+		// objPtr is now a pointer to a map[string]interface{}
+		if objPtr != nil {
+			// Dereference the pointer to access the map
+			obj := *objPtr
+			if value, ok := obj["Value"].(interface{}); ok {
+				serde.MaybeFail("deserialization", serde.Expect(value.(float64), float64(100)))
+			} else {
+				fmt.Println("Value is not of type int")
+			}
+		} else {
+			fmt.Println("objPtr is nil")
+		}
+	}
+
+	fmt.Println("grrrr: ", newobj)
+	fmt.Println("grrrr errrr: ", err)
+
+	// TODO do bytesObj
+
+	// newobj, err = deser.DeserializeRecordName(bytesObj)
+	// serde.MaybeFail("deserialization", err, serde.Expect(newobj.(proto.Message).ProtoReflect(), obj.ProtoReflect()))
+	// fmt.Println("grrrr  222: ", newobj)
+}
+
 //
 // func RegisterMessageFactory() func(string, string) (interface{}, error) {
 // 	return func(subject string, name string) (interface{}, error) {
