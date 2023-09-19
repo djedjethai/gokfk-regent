@@ -119,11 +119,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 
 func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema SchemaInfo) (int, error) {
 
-	fmt.Println("seee the iiidddddddddddddddd: ", id)
-
-	if id < 1 {
-		id = -1
-	} else {
+	if id > 0 {
 		c.idCacheLock.RLock()
 		for key, _ := range c.idCache {
 			if key.id == id {
@@ -138,7 +134,7 @@ func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema 
 	if err != nil {
 		return -1, err
 	}
-	if id < 0 {
+	if id < 1 {
 		id = c.counter.increment()
 		id += len(c.idCache)
 		idCacheKey := subjectOnlyID{

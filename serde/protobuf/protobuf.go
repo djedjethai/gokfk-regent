@@ -173,7 +173,6 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
 	}
 
-	// my add
 	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
 
 	fullName := messageDescriptor.FullName()
@@ -396,7 +395,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	case proto.Message:
 		protoMsg = t
 	default:
-		return nil, fmt.Errorf("deserialization target must be a protobuf message. Got '%v'", t)
+		return nil, fmt.Errorf("deserialization target must be a protobuf message")
 	}
 	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
 	return protoMsg, err
@@ -429,7 +428,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	case proto.Message:
 		protoMsg = t
 	default:
-		return nil, fmt.Errorf("deserialization target must be a protobuf message. Got '%v'", t)
+		return nil, fmt.Errorf("deserialization target must be a protobuf message")
 	}
 	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
 	return protoMsg, err
@@ -477,12 +476,12 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	case proto.Message:
 		protoMsg = t
 	default:
-		return fmt.Errorf("deserialization target must be a protobuf message. Got '%v'", t)
+		return fmt.Errorf("deserialization target must be a protobuf message")
 	}
 
 	protoInfo := reflect.TypeOf(protoMsg).Elem()
 	if protoInfo.Name() != messageDesc.GetName() {
-		return fmt.Errorf("recipient proto object '%v' differs from incoming events", protoInfo.Name())
+		return fmt.Errorf("recipient proto object differs from incoming events")
 	}
 
 	return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
@@ -506,17 +505,17 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		case proto.Message:
 			protoMsg = t
 		default:
-			return fmt.Errorf("deserialization target must be a protobuf message. Got '%v'", t)
+			return fmt.Errorf("deserialization target must be a protobuf message")
 		}
 
 		protoInfo := reflect.TypeOf(protoMsg).Elem()
 		if protoInfo.Name() != messageDesc.GetName() {
-			return fmt.Errorf("recipient proto object '%v' differs from incoming events", protoInfo.Name())
+			return fmt.Errorf("recipient proto object differs from incoming events")
 		}
 
 		return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
 	} else {
-		return fmt.Errorf("unfound subject declaration for %v", msgFullyQlfName)
+		return fmt.Errorf("unfound subject declaration")
 	}
 }
 
