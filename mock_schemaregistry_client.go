@@ -77,7 +77,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return -1, err
 	}
 
-	// to differenciate topic from recordName
+	// differenciate topic from recordName
 	parts := strings.Split(subject, ":")
 	if len(parts) > 0 {
 		subject = parts[0]
@@ -98,7 +98,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	}
 
 	if len(parts) > 0 && parts[len(parts)-1] == "recordName-value" {
-		// case of recordName
+		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 		id, err = c.getIDFromRegistryRecordName(parts[0], idCacheEntryVal.id, schema)
 		if err != nil {
 			return -1, err
@@ -119,18 +119,21 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 
 func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema SchemaInfo) (int, error) {
 
+	fmt.Println("seee the iiidddddddddddddddd: ", id)
+
 	if id < 1 {
 		id = -1
-	}
-	c.idCacheLock.RLock()
-	for key, _ := range c.idCache {
-		if key.id == id {
-			id = key.id
-			break
+	} else {
+		c.idCacheLock.RLock()
+		for key, _ := range c.idCache {
+			if key.id == id {
+				id = key.id
+				break
+			}
 		}
+		c.idCacheLock.RUnlock()
 	}
 
-	c.idCacheLock.RUnlock()
 	err := c.generateVersion(subject, schema)
 	if err != nil {
 		return -1, err
