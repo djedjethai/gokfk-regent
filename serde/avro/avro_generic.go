@@ -84,13 +84,19 @@ func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string
 }
 
 // Serialize implements serialization of generic Avro data
-func (s *GenericSerializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+func (s *GenericSerializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
 	}
 
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+		}
+	}
 
 	val := reflect.ValueOf(msg)
 	if val.Kind() == reflect.Ptr {

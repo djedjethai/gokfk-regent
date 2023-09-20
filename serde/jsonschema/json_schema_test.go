@@ -151,10 +151,10 @@ func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
+	bytesInner, err := ser.SerializeRecordName(&inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj, pizza)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -225,10 +225,10 @@ func TestProtobufSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
+	bytesInner, err := ser.SerializeRecordName(&inner, linkedList)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -257,7 +257,7 @@ func TestProtobufSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -283,10 +283,10 @@ func TestProtobufSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
+	bytesInner, err := ser.SerializeRecordName(&inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -316,10 +316,10 @@ func TestProtobufSerdeDeserializeIntoRecordName(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
+	bytesInner, err := ser.SerializeRecordName(&inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj, pizza)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -350,7 +350,7 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -377,16 +377,16 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
+	bytesObj, err := ser.SerializeRecordName(&obj)
 	serde.MaybeFail("serialization", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
+	bytesInner, err := ser.SerializeRecordName(&inner, linkedList)
 	serde.MaybeFail("serialization", err)
 
 	aut := Author{
 		Name: "aut",
 	}
-	bytesAut, err := ser.SerializeRecordName("test.Author:recordName", &aut)
+	bytesAut, err := ser.SerializeRecordName(&aut)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -405,4 +405,19 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "json: Unmarshal(non-pointer string)"))
 	err = deser.DeserializeIntoRecordName(receivers, bytesAut)
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
+}
+
+func TestProtobufSerdeRecordNamePayloadUnmatchSubject(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	_, err = ser.SerializeRecordName(&obj, "test.Pizza")
+	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName does not match the subject"))
 }

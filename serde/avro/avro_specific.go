@@ -134,7 +134,7 @@ func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string) ([]by
 }
 
 // Serialize implements serialization of generic Avro data
-func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
 	}
@@ -150,6 +150,12 @@ func (s *SpecificSerializer) SerializeRecordName(subject string, msg interface{}
 	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema())
 	if err != nil {
 		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+		}
 	}
 
 	var id = 0

@@ -141,7 +141,7 @@ func (s *Serializer) addFullyQualifiedNameToSchema(jsonBytes []byte, msgFQN stri
 }
 
 // SerializeRecordName implements serialization of generic data to JSON
-func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
+func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
 	}
@@ -149,6 +149,12 @@ func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byt
 	// get the fully qualified name
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+		}
+	}
 
 	jschema := jsonschema.Reflect(msg)
 
