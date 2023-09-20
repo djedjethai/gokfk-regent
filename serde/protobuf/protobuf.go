@@ -155,13 +155,8 @@ func (s *Deserializer) ConfigureDeserializer(client schemaregistry.Client, serde
 }
 
 // SerializeRecordName serialize a protbuf data, here set to match the interface
-func (s *Serializer) SerializeRecordName(subject string, msg interface{}) ([]byte, error) {
-	return s.Serialize(subject, msg)
-}
-
-// Serialize implements serialization of Protobuf data
-func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
-
+func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
+	// return s.Serialize(subject, msg)
 	if msg == nil {
 		return nil, nil
 	}
@@ -170,23 +165,20 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	case proto.Message:
 		protoMsg = t
 	default:
-		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
+		return nil, fmt.Errorf("serialization target must be a protobuf message")
 	}
 
 	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
 
-	fullName := messageDescriptor.FullName()
+	fullName := string(messageDescriptor.FullName())
 
-	// Get the type of the message using reflection
-	// msgType := reflect.TypeOf(protoMsg)
+	if len(subject) > 0 {
+		if fullName != subject[0] {
+			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+		}
+	}
 
-	// // Dereference the pointer to get the underlying struct type
-	// msgType = msgType.Elem()
-
-	// // Get the message descriptor using the protoreflect package
-	// messageDescriptor := protoreflect.MessageType(msgType).Interface().(protoreflect.MessageDescriptor)
-
-	fmt.Println("protobuf.go - serialize - see yhe gullName: ", fullName)
+	fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
 
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
@@ -206,6 +198,54 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 
 	fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
+	id, err := s.GetID(fullName, protoMsg, info)
+	if err != nil {
+		return nil, err
+	}
+	msgIndexBytes := toMessageIndexBytes(protoMsg.ProtoReflect().Descriptor())
+	msgBytes, err := proto.Marshal(protoMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+
+}
+
+// Serialize implements serialization of Protobuf data
+func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
+
+	if msg == nil {
+		return nil, nil
+	}
+	var protoMsg proto.Message
+	switch t := msg.(type) {
+	case proto.Message:
+		protoMsg = t
+	default:
+		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
+	}
+
+	autoRegister := s.Conf.AutoRegisterSchemas
+	normalize := s.Conf.NormalizeSchemas
+	fileDesc, deps, err := s.toProtobufSchema(protoMsg)
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := s.resolveDependencies(fileDesc, deps, "", autoRegister, normalize)
+	if err != nil {
+		return nil, err
+	}
+	info := schemaregistry.SchemaInfo{
+		Schema:     metadata.Schema,
+		SchemaType: metadata.SchemaType,
+		References: metadata.References,
+	}
+
 	id, err := s.GetID(topic, protoMsg, info)
 	if err != nil {
 		return nil, err

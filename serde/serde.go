@@ -61,7 +61,7 @@ type Serializer interface {
 	// Serialize will serialize the given message, which should be a pointer.
 	// For example, in Protobuf, messages are always a pointer to a struct and never just a struct.
 	Serialize(topic string, msg interface{}) ([]byte, error)
-	SerializeRecordName(subject string, msg interface{}) ([]byte, error)
+	SerializeRecordName(msg interface{}, subject ...string) ([]byte, error)
 	Close()
 }
 
