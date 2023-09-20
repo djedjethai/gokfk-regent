@@ -246,7 +246,7 @@ func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]inte
 
 	v, ok := subjects[fullyQualifiedName]
 	if !ok {
-		return fmt.Errorf("No matching subject found")
+		return fmt.Errorf("unfound subject declaration")
 	}
 
 	writer, name, err := s.toType(info)

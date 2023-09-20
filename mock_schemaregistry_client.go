@@ -107,7 +107,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	} else {
 		// differenciate jsonschema from avro
 		parts = strings.Split(subject, ".")
-		if parts[0] == "jsonschema" {
+		if parts[0] == "jsonschema" || parts[0] == "avro" {
 
 			// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 			id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)

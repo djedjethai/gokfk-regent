@@ -112,9 +112,7 @@ type JSONLinkedList struct {
 
 const (
 	linkedList    = "jsonschema.LinkedList"
-	linkedListRN  = "jsonschema.LinkedList:recordName"
 	pizza         = "jsonschema.Pizza"
-	pizzaRN       = "jsonschema.Pizza:recordName"
 	invalidSchema = "invalidSchema"
 )
 
@@ -210,7 +208,6 @@ func RegisterMessageFactoryInvalidReceiver() func(string, string) (interface{}, 
 		case pizza:
 			return &LinkedList{}, nil
 		case linkedList:
-			fmt.Println("alllooo")
 			return "", nil
 		}
 		return nil, fmt.Errorf("No matching receiver")
@@ -353,7 +350,7 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -380,10 +377,10 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
 	aut := Author{
