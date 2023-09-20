@@ -77,12 +77,6 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return -1, err
 	}
 
-	// differenciate topic from recordName
-	parts := strings.Split(subject, ":")
-	if len(parts) > 0 {
-		subject = parts[0]
-	}
-
 	cacheKey := subjectJSON{
 		subject: subject,
 		json:    string(schemaJSON),
@@ -97,29 +91,19 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return idCacheEntryVal.id, nil
 	}
 
-	if parts[len(parts)-1] == "recordName-value" {
-		// works with protobub
+	parts := strings.Split(subject, ".")
+	if parts[0] == "jsonschema" || parts[0] == "avro" || parts[0] == "recordname" {
+
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
-		id, err = c.getIDFromRegistryRecordName(parts[0], idCacheEntryVal.id, schema)
+		id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)
 		if err != nil {
 			return -1, err
 		}
 	} else {
-		// differenciate jsonschema from avro
-		parts = strings.Split(subject, ".")
-		if parts[0] == "jsonschema" || parts[0] == "avro" {
 
-			// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
-			id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)
-			if err != nil {
-				return -1, err
-			}
-		} else {
-
-			id, err = c.getIDFromRegistry(subject, schema)
-			if err != nil {
-				return -1, err
-			}
+		id, err = c.getIDFromRegistry(subject, schema)
+		if err != nil {
+			return -1, err
 		}
 	}
 

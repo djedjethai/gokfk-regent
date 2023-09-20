@@ -26,6 +26,7 @@ import (
 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
 	"github.com/djedjethai/kfk-schemaregistry/serde"
 	"github.com/djedjethai/kfk-schemaregistry/test"
+	"github.com/djedjethai/kfk-schemaregistry/test/proto/recordname"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -225,19 +226,19 @@ func TestProtobufSerdeDeserializeInto(t *testing.T) {
 }
 
 const (
-	linkedList    = "test.LinkedList"
-	linkedListRN  = "test.LinkedList:recordName"
-	pizza         = "test.Pizza"
-	pizzaRN       = "test.Pizza:recordName"
+	linkedList = "recordname.LinkedList"
+	// linkedListRN  = "test.LinkedList:recordName"
+	pizza = "recordname.Pizza"
+	// pizzaRN       = "test.Pizza:recordName"
 	invalidSchema = "invalidSchema"
 )
 
 var (
-	inner = test.LinkedList{
+	inner = recordname.LinkedList{
 		Value: 100,
 	}
 
-	obj = test.Pizza{
+	obj = recordname.Pizza{
 		Size:     "Extra extra large",
 		Toppings: []string{"anchovies", "mushrooms"},
 	}
@@ -254,10 +255,10 @@ func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -316,10 +317,10 @@ func TestProtobufSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -351,7 +352,7 @@ func TestProtobufSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -381,10 +382,10 @@ func TestProtobufSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
@@ -415,10 +416,10 @@ func TestProtobufSerdeDeserializeIntoRecordName(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -452,7 +453,7 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
@@ -482,10 +483,10 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesObj, err := ser.SerializeRecordName(pizzaRN, &obj)
+	bytesObj, err := ser.SerializeRecordName(pizza, &obj)
 	serde.MaybeFail("serialization", err)
 
-	bytesInner, err := ser.SerializeRecordName(linkedListRN, &inner)
+	bytesInner, err := ser.SerializeRecordName(linkedList, &inner)
 	serde.MaybeFail("serialization", err)
 
 	aut := test.Author{
