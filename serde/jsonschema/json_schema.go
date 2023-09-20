@@ -361,7 +361,7 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 
 	v, ok := subjects[fullyQualifiedName]
 	if !ok {
-		return fmt.Errorf("No matching subject found")
+		return fmt.Errorf("unfound subject declaration")
 	}
 
 	if s.validate {
