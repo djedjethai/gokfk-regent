@@ -530,5 +530,5 @@ func TestProtobufSerdeSubjectMismatchPayload(t *testing.T) {
 
 	_, err = ser.SerializeRecordName(&obj, "test.Pizza")
 	fmt.Println(err)
-	serde.MaybeFail("serialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName does not match the subject"))
+	serde.MaybeFail("serialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName: 'recordname.Pizza' does not match the subject: 'test.Pizza'"))
 }

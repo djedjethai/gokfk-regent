@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	// "reflect"
+	"reflect"
 	"strings"
 
 	"github.com/actgardner/gogen-avro/v10/compiler"
@@ -99,7 +99,7 @@ func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, e
 	return payload, nil
 }
 
-func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string) ([]byte, string, error) {
+func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string, msg interface{}) ([]byte, string, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
 		fmt.Println("Error unmarshaling JSON:", err)
@@ -109,7 +109,23 @@ func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string) ([]by
 	parts := strings.Split(data["name"].(string), ".")
 	if len(parts) > 0 {
 		var namespace string
-		if len(parts) == 2 {
+		if len(parts) == 1 {
+			// avro schema does not define a namespace, use the Go namespace
+			msgFQNGo := reflect.TypeOf(msg).String()
+			msgFQNGo = strings.TrimLeft(msgFQNGo, "*")
+			partsMsg := strings.Split(msgFQNGo, ".")
+			if len(partsMsg) > 2 {
+				for i := 0; i < len(partsMsg)-1; i++ {
+					if i == 0 {
+						namespace += parts[0]
+					} else {
+						namespace += fmt.Sprintf(".%v", parts[i])
+					}
+				}
+			} else {
+				namespace = partsMsg[0]
+			}
+		} else if len(parts) == 2 {
 			namespace = parts[0]
 		} else if len(parts) > 2 {
 			for i := 0; i < len(parts)-1; i++ {
@@ -147,14 +163,14 @@ func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...str
 		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
 	}
 
-	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema())
+	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msg)
 	if err != nil {
 		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
 	}
 
 	if len(subject) > 0 {
 		if msgFQN != subject[0] {
-			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
 		}
 	}
 

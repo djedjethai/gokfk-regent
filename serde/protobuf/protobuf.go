@@ -174,7 +174,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 
 	if len(subject) > 0 {
 		if fullName != subject[0] {
-			return nil, fmt.Errorf("the payload's fullyQualifiedName does not match the subject")
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, fullName, subject[0])
 		}
 	}
 

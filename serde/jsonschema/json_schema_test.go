@@ -140,7 +140,7 @@ var (
 	}
 )
 
-func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
+func TestJSONSerdeDeserializeRecordName(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -214,7 +214,7 @@ func RegisterMessageFactoryInvalidReceiver() func(string, string) (interface{}, 
 	}
 }
 
-func TestProtobufSerdeDeserializeRecordNameWithHandler(t *testing.T) {
+func TestJSONSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -246,7 +246,7 @@ func TestProtobufSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
 }
 
-func TestProtobufSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
+func TestJSONSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -272,7 +272,7 @@ func TestProtobufSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
-func TestProtobufSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
+func TestJSONSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -305,7 +305,7 @@ func TestProtobufSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&{0}`))
 }
 
-func TestProtobufSerdeDeserializeIntoRecordName(t *testing.T) {
+func TestJSONSerdeDeserializeIntoRecordName(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -339,7 +339,7 @@ func TestProtobufSerdeDeserializeIntoRecordName(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizza].(*Pizza).Toppings[1], obj.Toppings[1]))
 }
 
-func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
+func TestJSONSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -366,7 +366,7 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
 	serde.MaybeFail("deserialization", serde.Expect(receivers[invalidSchema].(*Pizza).Size, ""))
 }
 
-func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
+func TestJSONSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -407,7 +407,7 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
 }
 
-func TestProtobufSerdeRecordNamePayloadUnmatchSubject(t *testing.T) {
+func TestJSONSerdeRecordNamePayloadUnmatchSubject(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")
@@ -419,5 +419,5 @@ func TestProtobufSerdeRecordNamePayloadUnmatchSubject(t *testing.T) {
 	serde.MaybeFail("Serializer configuration", err)
 
 	_, err = ser.SerializeRecordName(&obj, "test.Pizza")
-	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName does not match the subject"))
+	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName: 'jsonschema.Pizza' does not match the subject: 'test.Pizza'"))
 }

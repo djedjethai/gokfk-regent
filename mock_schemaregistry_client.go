@@ -91,8 +91,24 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		return idCacheEntryVal.id, nil
 	}
 
+	// extract the fullyQualifiedName from the subject
 	parts := strings.Split(subject, ".")
-	if parts[0] == "jsonschema" || parts[0] == "avro" || parts[0] == "recordname" {
+	var fullQualifName string
+	if len(parts) == 2 {
+		fullQualifName = parts[0]
+	} else if len(parts) > 2 {
+		for i := 0; i < len(parts)-1; i++ {
+			if i == 0 {
+				fullQualifName = parts[i]
+			} else {
+				fullQualifName += fmt.Sprintf(".%v", parts[i])
+			}
+		}
+	}
+	if parts[0] == "jsonschema" ||
+		fullQualifName == "avro" ||
+		fullQualifName == "recordname" ||
+		fullQualifName == "python.test.advanced" {
 
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 		id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)
