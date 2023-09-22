@@ -300,7 +300,7 @@ func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]int
 
 	v, ok := subjects[fullyQualifiedName]
 	if !ok {
-		return fmt.Errorf("No matching subject found")
+		return fmt.Errorf("unfound subject declaration")
 	}
 
 	writer, err := s.toAvroType(info)

@@ -1,6 +1,6 @@
 /**
  * Copyright 2022 Confluent Inc.
- * Copyright 2022-2023 Jerome Bidault (jeromedbtdev@gmail.com).
+ * Copyright 2023 Jerome Bidault (jeromedbtdev@gmail.com).
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,117 +47,117 @@ func testMessageFactorySpecific(subject string, name string) (interface{}, error
 	return nil, errors.New("schema not found")
 }
 
-// func TestSpecificAvroSerdeWithSimple(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	obj := test.NewDemoSchema()
-// 	obj.IntField = 123
-// 	obj.DoubleField = 45.67
-// 	obj.StringField = "hi"
-// 	obj.BoolField = true
-// 	obj.BytesField = []byte{0, 0, 0, 1}
-// 	bytes, err := ser.Serialize("topic1", &obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-// 	deser.MessageFactory = testMessageFactorySpecific
-//
-// 	var newobj test.DemoSchema
-// 	err = deser.DeserializeInto("topic1", bytes, &newobj)
-// 	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
-//
-// 	msg, err := deser.Deserialize("topic1", bytes)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
-// }
-//
-// func TestSpecificAvroSerdeWithNested(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	nested := test.NestedRecord{
-// 		StringField: "hi",
-// 		BoolField:   true,
-// 		BytesField:  []byte{1, 2},
-// 	}
-// 	number := test.NumberRecord{
-// 		IntField:    123,
-// 		LongField:   456,
-// 		FloatField:  1.23,
-// 		DoubleField: 4.56,
-// 	}
-// 	obj := test.NestedTestRecord{
-// 		NumberField: number,
-// 		OtherField:  nested,
-// 	}
-// 	bytes, err := ser.Serialize("topic1", &obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-// 	deser.MessageFactory = testMessageFactorySpecific
-//
-// 	var newobj test.NestedTestRecord
-// 	err = deser.DeserializeInto("topic1", bytes, &newobj)
-// 	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
-//
-// 	msg, err := deser.Deserialize("topic1", bytes)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
-// }
-//
-// func TestSpecificAvroSerdeWithCycle(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	inner := test.RecursiveUnionTestRecord{
-// 		RecursiveField: nil,
-// 	}
-// 	wrapper := test.UnionNullRecursiveUnionTestRecord{
-// 		RecursiveUnionTestRecord: inner,
-// 		UnionType:                1,
-// 	}
-// 	obj := test.RecursiveUnionTestRecord{
-// 		RecursiveField: &wrapper,
-// 	}
-// 	bytes, err := ser.Serialize("topic1", &obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-// 	deser.MessageFactory = testMessageFactorySpecific
-//
-// 	var newobj test.RecursiveUnionTestRecord
-// 	err = deser.DeserializeInto("topic1", bytes, &newobj)
-// 	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
-//
-// 	msg, err := deser.Deserialize("topic1", bytes)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
-// }
+func TestSpecificAvroSerdeWithSimple(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	obj := test.NewDemoSchema()
+	obj.IntField = 123
+	obj.DoubleField = 45.67
+	obj.StringField = "hi"
+	obj.BoolField = true
+	obj.BytesField = []byte{0, 0, 0, 1}
+	bytes, err := ser.Serialize("topic1", &obj)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	deser.MessageFactory = testMessageFactorySpecific
+
+	var newobj test.DemoSchema
+	err = deser.DeserializeInto("topic1", bytes, &newobj)
+	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
+
+	msg, err := deser.Deserialize("topic1", bytes)
+	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
+}
+
+func TestSpecificAvroSerdeWithNested(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	nested := test.NestedRecord{
+		StringField: "hi",
+		BoolField:   true,
+		BytesField:  []byte{1, 2},
+	}
+	number := test.NumberRecord{
+		IntField:    123,
+		LongField:   456,
+		FloatField:  1.23,
+		DoubleField: 4.56,
+	}
+	obj := test.NestedTestRecord{
+		NumberField: number,
+		OtherField:  nested,
+	}
+	bytes, err := ser.Serialize("topic1", &obj)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	deser.MessageFactory = testMessageFactorySpecific
+
+	var newobj test.NestedTestRecord
+	err = deser.DeserializeInto("topic1", bytes, &newobj)
+	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
+
+	msg, err := deser.Deserialize("topic1", bytes)
+	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
+}
+
+func TestSpecificAvroSerdeWithCycle(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	inner := test.RecursiveUnionTestRecord{
+		RecursiveField: nil,
+	}
+	wrapper := test.UnionNullRecursiveUnionTestRecord{
+		RecursiveUnionTestRecord: inner,
+		UnionType:                1,
+	}
+	obj := test.RecursiveUnionTestRecord{
+		RecursiveField: &wrapper,
+	}
+	bytes, err := ser.Serialize("topic1", &obj)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	deser.MessageFactory = testMessageFactorySpecific
+
+	var newobj test.RecursiveUnionTestRecord
+	err = deser.DeserializeInto("topic1", bytes, &newobj)
+	serde.MaybeFail("deserialization into", err, serde.Expect(newobj, obj))
+
+	msg, err := deser.Deserialize("topic1", bytes)
+	serde.MaybeFail("deserialization", err, serde.Expect(msg, &obj))
+}
 
 // as the avro schema does not define namespace
 // use the Go namespace recordname.DemoSchema
@@ -270,8 +270,6 @@ func TestAvroSpecificSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	deser.MessageFactory = RegisterMessageFactorySpecific()
 
 	newobj, err := deser.DeserializeRecordName(bytesInner)
-	fmt.Println("grrr: ", newobj)
-	fmt.Println("grrr errr: ", err)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*rn.DemoSchema).StringField, example.StringField))
 
 	newobj, err = deser.DeserializeRecordName(bytesObj)
@@ -281,178 +279,172 @@ func TestAvroSpecificSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*rn.Advanced).Friends["second"].Number.Long, complexDT.Friends["second"].Number.Long))
 }
 
-// func TestAvroSpecificSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(&obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-// 	// register invalid receiver
-// 	deser.MessageFactory = RegisterMessageFactoryNoReceiver()
-//
-// 	newobj, err := deser.DeserializeRecordName(bytesObj)
-// 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
-// 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
-// }
-//
-// func TestAvroSpecificSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	bytesInner, err := ser.SerializeRecordName(&inner)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(&obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-// 	// register invalid schema
-// 	deser.MessageFactory = RegisterMessageFactoryInvalidReceiver()
-//
-// 	newobj, err := deser.DeserializeRecordName(bytesInner)
-// 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, ""))
-// 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "destination is not a pointer string"))
-//
-// 	newobj, err = deser.DeserializeRecordName(bytesObj)
-// 	serde.MaybeFail("deserializeInvalidReceiver", err)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&{0}`))
-// }
-//
-// func TestAvroSpecificSerdeDeserializeIntoRecordName(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	bytesInner, err := ser.SerializeRecordName(&inner)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(&obj, pizza)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	var receivers = make(map[string]interface{})
-// 	receivers[linkedList] = &LinkedList{}
-// 	receivers[pizza] = &Pizza{}
-//
-// 	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-//
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[linkedList].(*LinkedList).Value), 100))
-//
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizza].(*Pizza).Toppings[0], obj.Toppings[0]))
-// 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizza].(*Pizza).Toppings[1], obj.Toppings[1]))
-// }
-//
-// func TestAvroSpecificSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(&obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	var receivers = make(map[string]interface{})
-// 	receivers[invalidSchema] = &Pizza{}
-//
-// 	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-//
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-// 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
-// 	serde.MaybeFail("deserialization", serde.Expect(receivers[invalidSchema].(*Pizza).Size, ""))
-// }
-//
-// func TestAvroSpecificSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	bytesObj, err := ser.SerializeRecordName(&obj)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	bytesInner, err := ser.SerializeRecordName(&inner)
-// 	serde.MaybeFail("serialization", err)
-//
-// 	aut := Author{
-// 		Name: "aut",
-// 	}
-// 	bytesAut, err := ser.SerializeRecordName(&aut, "avro.Author")
-// 	serde.MaybeFail("serialization", err)
-//
-// 	var receivers = make(map[string]interface{})
-// 	receivers[pizza] = &LinkedList{}
-// 	receivers[linkedList] = ""
-//
-// 	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
-//
-// 	serde.MaybeFail("Deserializer configuration", err)
-// 	deser.Client = ser.Client
-//
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-// 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprint(receivers[pizza]), `&{0}`))
-//
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
-// 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "destination is not a pointer string"))
-// 	err = deser.DeserializeIntoRecordName(receivers, bytesAut)
-// 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
-// }
-//
-// func TestAvroSpecificSerdeRecordNamePayloadMismatchSubject(t *testing.T) {
-// 	serde.MaybeFail = serde.InitFailFunc(t)
-// 	var err error
-// 	conf := schemaregistry.NewConfig("mock://")
-//
-// 	client, err := schemaregistry.NewClient(conf)
-// 	serde.MaybeFail("Schema Registry configuration", err)
-//
-// 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
-// 	serde.MaybeFail("Serializer configuration", err)
-//
-// 	_, err = ser.SerializeRecordName(&obj, "test.Pizza")
-// 	serde.MaybeFail("serialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName does not match the subject"))
-// }
+func TestAvroSpecificSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesObj, err := ser.SerializeRecordName(example)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	// register invalid receiver
+	deser.MessageFactory = RegisterMessageFactoryNoReceiverSpecific()
+
+	newobj, err := deser.DeserializeRecordName(bytesObj)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
+}
+
+func TestAvroSpecificSerdeDeserializeRecordNameWithInvalidSchema(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeRecordName(example)
+	serde.MaybeFail("serialization", err)
+
+	bytesObj, err := ser.SerializeRecordName(complexDT)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	// register invalid schema
+	deser.MessageFactory = RegisterMessageFactoryInvalidReceiverSpecific()
+
+	newobj, err := deser.DeserializeRecordName(bytesInner)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+
+	newobj, err = deser.DeserializeRecordName(bytesObj)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
+}
+
+func TestAvroSpecificSerdeDeserializeIntoRecordName(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeRecordName(example)
+	serde.MaybeFail("serialization", err)
+
+	bytesObj, err := ser.SerializeRecordName(complexDT)
+	serde.MaybeFail("serialization", err)
+
+	var receivers = make(map[string]interface{})
+	receivers[exampleNamespace] = &rn.DemoSchema{}
+	receivers[complexDTNamespace] = &rn.Advanced{}
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+
+	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[exampleNamespace].(*rn.DemoSchema).StringField, example.StringField))
+
+	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[complexDTNamespace].(*rn.Advanced).Number.Long, complexDT.Number.Long))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[complexDTNamespace].(*rn.Advanced).Name.String, complexDT.Name.String))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[complexDTNamespace].(*rn.Advanced).Friends["first"].Name.String, complexDT.Friends["first"].Name.String))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[complexDTNamespace].(*rn.Advanced).Friends["second"].Number.Long, complexDT.Friends["second"].Number.Long))
+}
+
+func TestAvroSpecificSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesObj, err := ser.SerializeRecordName(example)
+	serde.MaybeFail("serialization", err)
+
+	var receivers = make(map[string]interface{})
+	receivers[invalidSchema] = &rn.DemoSchema{}
+
+	deser, err := NewSpecificDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+
+	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
+	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
+	serde.MaybeFail("deserialization", serde.Expect(fmt.Sprintf("%v", receivers[invalidSchema]), `&{0 0  false []}`))
+}
+
+func TestAvroSpecificSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesObj, err := ser.SerializeRecordName(example)
+	serde.MaybeFail("serialization", err)
+
+	bytesInner, err := ser.SerializeRecordName(complexDT)
+	serde.MaybeFail("serialization", err)
+
+	var receivers = make(map[string]interface{})
+	receivers[exampleNamespace] = &rn.Advanced{}
+	receivers[complexDTNamespace] = ""
+
+	deser, err := NewGenericDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+
+	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
+	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", receivers[exampleNamespace]), `&{<nil> { 0} map[] map[]}`))
+
+	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
+	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "destination is not a pointer string"))
+	serde.MaybeFail("deserialization", serde.Expect(receivers[complexDTNamespace], ""))
+}
+
+func TestAvroSpecificSerdeRecordNamePayloadMismatchSubject(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSpecificSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	_, err = ser.SerializeRecordName(example, "test.Pizza")
+	serde.MaybeFail("serialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName: 'recordname.DemoSchema' does not match the subject: 'test.Pizza'"))
+}
