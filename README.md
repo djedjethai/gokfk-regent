@@ -2,8 +2,6 @@
 
 **gokfk-regent is a fork of Confluent's Golang client that introduces the Topic-Name-Strategy, Record-Name-Strategy, and Topic-Record-Name-Strategy implementations—features** currently absent in the original client. This fork caters to users with specific functionality requirements, enhancing their experience with Apache Kafka.
 
-**gokfk-regent improves cache management in lrucache.go, an issue that remains open in the original project(at this day)**. This fork addresses the problem by implementing the necessary fix, ensuring the cache operates as intended by respecting its allocated capacity.
-
 **gokfk-regent is a fork of confluent-kafka-go that harnesses the power of go-confluent-schemaregistry. As a nimble open-source project, it prioritizes agility, enabling swift development, and enthusiastically welcomes contributions from the community.**
 
 
@@ -15,7 +13,7 @@
 ## Install
 
 ``` bash
-$ go get https://github.com/djedjethai/gokfk-regent/v1
+$ go get https://github.com/djedjethai/gokfk-regent
 ```
 
 ## Use the RecordNameStrategy with Protobuf
@@ -58,14 +56,11 @@ func producer() {
 		time.Sleep(2 * time.Second)
 	}
 }
-
-
 /*
 * ===============================
 * CONSUMER
 * ===============================
 **/
-
 var person = &pb.Person{}
 var address = &pb.Address{}
 
@@ -258,7 +253,6 @@ func (c *srConsumer) RegisterMessageFactoryRecordName() func(string, string) (in
 }
 
 // Run consumer
-// func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
 func (c *srConsumer) Run(topic string) error {
 	if err := c.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 		return err
@@ -320,6 +314,123 @@ func (c *srConsumer) Run(topic string) error {
 	}
 }
 ```
+
+## Use the RecordNameStrategy with AvroSchema
+(see in ./examples for the full implementation)
+```
+func producer() {
+	producer, err := NewProducer(kafkaURL, srURL)
+	if err != nil {
+		log.Fatal("Can not create producer: ", err)
+	}
+
+	msg := &avSch.Person{
+		Name: "robert",
+		Age:  23,
+	}
+
+	addr := &avSch.Address{
+		Street: "rue de la soif",
+		City:   "Rennes",
+	}
+
+	for {
+		offset, err := producer.ProduceMessage(msg, topic, "personrecord.Person")
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
+
+		offset, err = producer.ProduceMessage(addr, topic, "addressrecord.Address")
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
+
+		log.Println("Message produced, offset is: ", offset)
+		time.Sleep(2 * time.Second)
+	}
+}
+/*
+* ===============================
+* CONSUMER
+* ===============================
+**/
+// RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
+func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
+	return func(subject string, name string) (interface{}, error) {
+		switch name {
+		case "personrecord.Person":
+			return &avSch.Person{}, nil
+		case "addressrecord.Address":
+			return &avSch.Address{}, nil
+		}
+		return nil, fmt.Errorf("Err RegisterMessageFactory")
+		// return receiver, nil
+	}
+}
+
+// // NOTE doing like so make sure the event subject match the expected receiver's subject
+// func (c *srConsumer) RegisterMessageFactoryWithMap(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+// 	return func(subject string, name string) (interface{}, error) {
+// 		if tp, ok := subjectTypes[name]; !ok {
+// 			return nil, errors.New("Invalid receiver")
+// 		} else {
+// 			return tp, nil
+// 		}
+// 	}
+// }
+
+// Run consumer
+func (c *srConsumer) Run(topic string) error {
+	if err := c.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
+		return err
+	}
+
+	// case DeserializeRecordName
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
+	// case DeserializeIntoRecordName(no need RegisterMessageFactory)
+	ref := make(map[string]interface{})
+	px := avSch.Person{}
+	addr := avSch.Address{}
+	msgFQN := "personrecord.Person"
+	addrFQN := "addressrecord.Address"
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
+
+	for {
+		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
+		if err != nil {
+			return err
+		}
+
+		// get a msg of type interface{}
+		msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
+		if err != nil {
+			return err
+		}
+		// if _, ok := msg.(*avSch.Person); ok {
+		// 	fmt.Println("Person: ", msg.(*avSch.Person).Name, " - ", msg.(*avSch.Person).Age)
+		// } else {
+		// 	fmt.Println("Address: ", msg.(*avSch.Address).City, " - ", msg.(*avSch.Address).Street)
+		// }
+		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
+
+		// // use deserializer.DeserializeInto to get a struct back
+		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+
+		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
+			return err
+		}
+	}
+}
+
+```
+
 
 ## Contributing
 
