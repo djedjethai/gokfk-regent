@@ -32,8 +32,8 @@ import (
 	"github.com/actgardner/gogen-avro/v10/schema"
 	"github.com/actgardner/gogen-avro/v10/vm"
 	"github.com/actgardner/gogen-avro/v10/vm/types"
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/djedjethai/kfk-schemaregistry/serde"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
+	"github.com/djedjethai/gokfk-regent/serde"
 	"github.com/linkedin/goavro"
 )
 

@@ -23,7 +23,7 @@ import (
 	"github.com/actgardner/gogen-avro/v10/parser"
 	"github.com/actgardner/gogen-avro/v10/resolver"
 	"github.com/actgardner/gogen-avro/v10/schema"
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
 )
 
 func resolveAvroReferences(c schemaregistry.Client, schema schemaregistry.SchemaInfo, ns *parser.Namespace) (schema.AvroType, error) {

@@ -2,13 +2,11 @@ module jsonexample
 
 go 1.21.0
 
-replace github.com/djedjethai/kfk-schemaregistry => ../..
+replace github.com/djedjethai/gokfk-regent => ../..
 
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.2.0
-	github.com/djedjethai/kfk-schemaregistry v0.0.0-00010101000000-000000000000
-	github.com/golang/protobuf v1.5.3
-	google.golang.org/protobuf v1.31.0
+	github.com/djedjethai/gokfk-regent v0.0.0-00010101000000-000000000000
 )
 
 require (

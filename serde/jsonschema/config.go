@@ -19,7 +19,7 @@
 
 package jsonschema
 
-import "github.com/djedjethai/kfk-schemaregistry/serde"
+import "github.com/djedjethai/gokfk-regent/serde"
 
 // SerializerConfig is used to pass multiple configuration options to the serializers.
 type SerializerConfig struct {

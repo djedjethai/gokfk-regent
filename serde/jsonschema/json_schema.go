@@ -27,8 +27,8 @@ import (
 	"reflect"
 	"strings"
 
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/djedjethai/kfk-schemaregistry/serde"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
+	"github.com/djedjethai/gokfk-regent/serde"
 	"github.com/invopop/jsonschema"
 	jsonschema2 "github.com/santhosh-tekuri/jsonschema/v5"
 )

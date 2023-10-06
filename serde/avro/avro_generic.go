@@ -28,8 +28,8 @@ import (
 
 	"github.com/actgardner/gogen-avro/v10/parser"
 	"github.com/actgardner/gogen-avro/v10/schema"
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/djedjethai/kfk-schemaregistry/serde"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
+	"github.com/djedjethai/gokfk-regent/serde"
 	"github.com/heetch/avro"
 	"github.com/linkedin/goavro"
 )

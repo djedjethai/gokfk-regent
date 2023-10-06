@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"log"
 
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
 )
 
 // Type represents the type of Serde

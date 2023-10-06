@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"testing"
 
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/djedjethai/kfk-schemaregistry/serde"
-	"github.com/djedjethai/kfk-schemaregistry/test"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
+	"github.com/djedjethai/gokfk-regent/serde"
+	"github.com/djedjethai/gokfk-regent/test"
 )
 
 func TestJSONSchemaSerdeWithSimple(t *testing.T) {

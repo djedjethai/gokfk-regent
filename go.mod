@@ -1,4 +1,4 @@
-module github.com/djedjethai/kfk-schemaregistry
+module github.com/djedjethai/gokfk-regent
 
 go 1.20
 

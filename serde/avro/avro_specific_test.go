@@ -24,10 +24,10 @@ import (
 	"fmt"
 	"testing"
 
-	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-	"github.com/djedjethai/kfk-schemaregistry/serde"
-	"github.com/djedjethai/kfk-schemaregistry/test"
-	rn "github.com/djedjethai/kfk-schemaregistry/test/avro/recordname"
+	schemaregistry "github.com/djedjethai/gokfk-regent"
+	"github.com/djedjethai/gokfk-regent/serde"
+	"github.com/djedjethai/gokfk-regent/test"
+	rn "github.com/djedjethai/gokfk-regent/test/avro/recordname"
 )
 
 func testMessageFactorySpecific(subject string, name string) (interface{}, error) {

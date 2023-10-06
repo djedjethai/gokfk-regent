@@ -1,15 +1,17 @@
 package main
 
 // import (
+// 	// "errors"
+// 	// "bytes"
 // 	"fmt"
 // 	"os"
-// 	"reflect"
 // 	"strings"
 //
+// 	// "github.com/actgardner/gogen-avro/v10/compiler"
 // 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-// 	schemaregistry "github.com/djedjethai/kfk-schemaregistry"
-// 	"github.com/djedjethai/kfk-schemaregistry/serde"
-// 	"github.com/djedjethai/kfk-schemaregistry/serde/avro"
+// 	schemaregistry "github.com/djedjethai/gokfk-regent"
+// 	"github.com/djedjethai/gokfk-regent/serde"
+// 	"github.com/djedjethai/gokfk-regent/serde/avro"
 // 	"log"
 // 	"time"
 // )
@@ -32,15 +34,6 @@ package main
 // 	Age  int    `avro:"age"`
 // }
 //
-// type Address struct {
-// 	Street string `avro:"street"`
-// 	City   string `avro:"city"`
-// }
-//
-// // func init() {
-// // 	compiler.LoggingEnabled = true
-// // }
-//
 // func main() {
 //
 // 	clientMode := os.Args[1]
@@ -61,23 +54,13 @@ package main
 // 		log.Fatal("Can not create producer: ", err)
 // 	}
 //
-// 	msg := Person{
+// 	msg := &Person{
 // 		Name: "robert",
 // 		Age:  23,
 // 	}
 //
-// 	addr := Address{
-// 		Street: "rue de la soif",
-// 		City:   "Rennes",
-// 	}
-//
 // 	for {
-// 		offset, err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
-// 		if err != nil {
-// 			log.Println("Error producing Message: ", err)
-// 		}
-//
-// 		offset, err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
+// 		offset, err := producer.ProduceMessage(msg, topic)
 // 		if err != nil {
 // 			log.Println("Error producing Message: ", err)
 // 		}
@@ -89,7 +72,7 @@ package main
 //
 // // SRProducer interface
 // type SRProducer interface {
-// 	ProduceMessage(msg interface{}, topic, subject string) (int64, error)
+// 	ProduceMessage(msg interface{}, topic string) (int64, error)
 // 	Close()
 // }
 //
@@ -119,11 +102,11 @@ package main
 // }
 //
 // // ProduceMessage sends serialized message to kafka using schema registry
-// func (p *srProducer) ProduceMessage(msg interface{}, topic, subject string) (int64, error) {
+// func (p *srProducer) ProduceMessage(msg interface{}, topic string) (int64, error) {
 // 	kafkaChan := make(chan kafka.Event)
 // 	defer close(kafkaChan)
 //
-// 	payload, err := p.serializer.SerializeRecordName(subject, msg)
+// 	payload, err := p.serializer.Serialize(topic, msg)
 // 	if err != nil {
 // 		return nullOffset, err
 // 	}
@@ -207,30 +190,23 @@ package main
 // }
 //
 // // RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
-// func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
+// func (c *srConsumer) RegisterMessageFactory(receiver interface{}) func(string, string) (interface{}, error) {
 // 	return func(subject string, name string) (interface{}, error) {
-// 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - subject: ", subject)
-// 		fmt.Println("topicNameStrategy.go - RegisterMessageFactory - name: ", name)
-// 		switch name {
-// 		case "main.Person":
-// 			return &Person{}, nil
-// 		case "main.Address":
-// 			return &Address{}, nil
-// 		}
-// 		return nil, fmt.Errorf("Err RegisterMessageFactory")
-// 		// return receiver, nil
+// 		return receiver, nil
 // 	}
 // }
 //
-// // func (c *srConsumer) RegisterMessageFactory(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
-// // 	return func(subject string, name string) (interface{}, error) {
-// // 		if tp, ok := subjectTypes[subject]; !ok {
-// // 			return nil, errors.New("Invalid receiver")
-// // 		} else {
-// // 			return tp, nil
-// // 		}
-// // 	}
-// // }
+// // NOTE doing like so make sure the event subject match the expected receiver's subject
+// func (c *srConsumer) RegisterMessageFactoryWithMap(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+// 	return func(subject string, name string) (interface{}, error) {
+// 		// !!! in avro name is the object Name(Person in this ex)
+// 		if tp, ok := subjectTypes[subject]; !ok {
+// 			return nil, fmt.Errorf("Invalid receiver")
+// 		} else {
+// 			return tp, nil
+// 		}
+// 	}
+// }
 //
 // // Run consumer
 // // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
@@ -239,17 +215,11 @@ package main
 // 		return err
 // 	}
 //
-// 	// case DeserializeRecordName(facultatif)
-// 	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+// 	// receivers := make(map[string]interface{})
+// 	// receivers[fmt.Sprintf("%v-value", topic)] = &Person{}
+// 	// c.deserializer.MessageFactory = c.RegisterMessageFactoryWithMap(receivers)
 //
-// 	// case DeserializeIntoRecordName(no need RegisterMessageFactory)
-// 	ref := make(map[string]interface{})
-// 	px := Person{}
-// 	addr := Address{}
-// 	msgFQN := reflect.TypeOf(px).String()
-// 	addrFQN := reflect.TypeOf(addr).String()
-// 	ref[msgFQN] = &px
-// 	ref[addrFQN] = &addr
+// 	// c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
 //
 // 	for {
 // 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -258,19 +228,22 @@ package main
 // 		}
 //
 // 		// // get a msg of type interface{}
-// 		// msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
+// 		// msg, err := c.deserializer.Deserialize(topic, kafkaMsg.Value)
 // 		// if err != nil {
 // 		// 	return err
+// 		// }
+// 		// if _, ok := msg.(*Person); ok {
+// 		// 	fmt.Println("Person: ", msg.(*Person).Name, " - ", msg.(*Person).Age)
 // 		// }
 // 		// c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 //
 // 		// use deserializer.DeserializeInto to get a struct back
-// 		err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+// 		person := &Person{}
+// 		err = c.deserializer.DeserializeInto(topic, kafkaMsg.Value, person)
 // 		if err != nil {
 // 			return err
 // 		}
-// 		fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
-// 		fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+// 		fmt.Println("See the struct: ", person.Name, " - ", person.Age)
 //
 // 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 // 			return err
