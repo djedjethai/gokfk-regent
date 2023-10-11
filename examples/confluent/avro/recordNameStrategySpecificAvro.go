@@ -1,20 +1,16 @@
 package main
 
-// // from Nina Pakshina
-// // https://medium.com/@ninucium/is-using-kafka-with-schema-registry-and-protobuf-worth-it-part-1-1c4a9995a5d3
-//
 import (
-	pb "examples/api/v1/proto"
 	"fmt"
 	"os"
+	// "reflect"
 	"strings"
 
+	avSch "avroexample/schemas"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	schemaregistry "github.com/djedjethai/gokfk-regent"
 	"github.com/djedjethai/gokfk-regent/serde"
-	"github.com/djedjethai/gokfk-regent/serde/protobuf"
-	"github.com/golang/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
+	"github.com/djedjethai/gokfk-regent/serde/avro"
 	"log"
 	"time"
 )
@@ -52,13 +48,23 @@ func producer() {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	msg := &pb.Person{
+	msg := &avSch.Person{
 		Name: "robert",
 		Age:  23,
 	}
 
+	addr := &avSch.Address{
+		Street: "rue de la soif",
+		City:   "Rennes",
+	}
+
 	for {
-		offset, err := producer.ProduceMessage(msg, topic)
+		offset, err := producer.ProduceMessage(msg, topic, "personrecord.Person")
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
+
+		offset, err = producer.ProduceMessage(addr, topic, "addressrecord.Address")
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -70,7 +76,7 @@ func producer() {
 
 // SRProducer interface
 type SRProducer interface {
-	ProduceMessage(msg proto.Message, topic string) (int64, error)
+	ProduceMessage(msg interface{}, topic, subject string) (int64, error)
 	Close()
 }
 
@@ -89,7 +95,7 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 	if err != nil {
 		return nil, err
 	}
-	s, err := protobuf.NewSerializer(c, serde.ValueSerde, protobuf.NewSerializerConfig())
+	s, err := avro.NewSpecificSerializer(c, serde.ValueSerde, avro.NewSerializerConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +106,12 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 }
 
 // ProduceMessage sends serialized message to kafka using schema registry
-func (p *srProducer) ProduceMessage(msg proto.Message, topic string) (int64, error) {
+func (p *srProducer) ProduceMessage(msg interface{}, topic, subject string) (int64, error) {
 	kafkaChan := make(chan kafka.Event)
 	defer close(kafkaChan)
 
-	payload, err := p.serializer.Serialize(topic, msg)
+	payload, err := p.serializer.SerializeRecordName(msg, subject)
+	// or payload, err := p.serializer.SerializeRecordName(msg)
 	if err != nil {
 		return nullOffset, err
 	}
@@ -142,9 +149,7 @@ func consumer() {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	personType := (&pb.Person{}).ProtoReflect().Type()
-
-	err = consumer.Run(personType, topic)
+	err = consumer.Run(topic)
 	if err != nil {
 		log.Println("ConsumerRun Error: ", err)
 	}
@@ -153,13 +158,13 @@ func consumer() {
 
 // SRConsumer interface
 type SRConsumer interface {
-	Run(messagesType protoreflect.MessageType, topic string) error
+	Run(topic string) error
 	Close()
 }
 
 type srConsumer struct {
 	consumer     *kafka.Consumer
-	deserializer *protobuf.Deserializer
+	deserializer *avro.SpecificDeserializer
 }
 
 // NewConsumer returns new consumer with schema registry
@@ -179,7 +184,7 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 		return nil, err
 	}
 
-	d, err := protobuf.NewDeserializer(sr, serde.ValueSerde, protobuf.NewDeserializerConfig())
+	d, err := avro.NewSpecificDeserializer(sr, serde.ValueSerde, avro.NewDeserializerConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -189,20 +194,49 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 	}, nil
 }
 
-// RegisterMessage add simpleHandler and register schema in SR
-func (c *srConsumer) RegisterMessage(messageType protoreflect.MessageType) error {
-	return nil
+// RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
+func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
+	return func(subject string, name string) (interface{}, error) {
+		switch name {
+		case "personrecord.Person":
+			return &avSch.Person{}, nil
+		case "addressrecord.Address":
+			return &avSch.Address{}, nil
+		}
+		return nil, fmt.Errorf("Err RegisterMessageFactory")
+		// return receiver, nil
+	}
 }
 
+// // NOTE doing like so make sure the event subject match the expected receiver's subject
+// func (c *srConsumer) RegisterMessageFactoryWithMap(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+// 	return func(subject string, name string) (interface{}, error) {
+// 		if tp, ok := subjectTypes[name]; !ok {
+// 			return nil, errors.New("Invalid receiver")
+// 		} else {
+// 			return tp, nil
+// 		}
+// 	}
+// }
+
 // Run consumer
-func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
+// func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
+func (c *srConsumer) Run(topic string) error {
 	if err := c.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 		return err
 	}
 
-	if err := c.deserializer.ProtoRegistry.RegisterMessage(messageType); err != nil {
-		return err
-	}
+	// case DeserializeRecordName
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
+	// case DeserializeIntoRecordName(no need RegisterMessageFactory)
+	ref := make(map[string]interface{})
+	px := avSch.Person{}
+	addr := avSch.Address{}
+	msgFQN := "personrecord.Person"
+	addrFQN := "addressrecord.Address"
+	ref[msgFQN] = &px
+	ref[addrFQN] = &addr
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -211,19 +245,24 @@ func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) err
 		}
 
 		// get a msg of type interface{}
-		msg, err := c.deserializer.Deserialize(topic, kafkaMsg.Value)
+		msg, err := c.deserializer.DeserializeRecordName(kafkaMsg.Value)
 		if err != nil {
 			return err
 		}
+		// if _, ok := msg.(*avSch.Person); ok {
+		// 	fmt.Println("Person: ", msg.(*avSch.Person).Name, " - ", msg.(*avSch.Person).Age)
+		// } else {
+		// 	fmt.Println("Address: ", msg.(*avSch.Address).City, " - ", msg.(*avSch.Address).Street)
+		// }
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
-		// use deserializer.DeserializeInto to get a struct back
-		person := &pb.Person{}
-		err = c.deserializer.DeserializeInto(topic, kafkaMsg.Value, person)
-		if err != nil {
-			return err
-		}
-		fmt.Println("See the struct: ", person.Name, " - ", person.Age)
+		// // use deserializer.DeserializeInto to get a struct back
+		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err
