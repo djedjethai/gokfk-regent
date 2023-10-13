@@ -10,6 +10,7 @@ As an agile open-source project, we prioritize flexibility, allowing for rapid d
 * Full implementations using gokfk-regent, confluentinc images, and confluent-kafka-go/kafka client
 * Full implementations using gokfk-regent, wurstmeister images, and segmentio/kafka client
 
+
 ## Implemented
 * TopicNameStrategy for ProtoBuf, JsonSchema, Avro(from the parent project, Confluent-kafka-go)
 * RecordNameStrategy for Protobuf, JsonSchema, Avro  
