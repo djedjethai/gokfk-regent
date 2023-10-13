@@ -7,8 +7,9 @@ It is a fork of Confluent-kafka-go's SchemaRegistry, inheriting the Topic-Name-S
 As an agile open-source project, we prioritize flexibility, allowing for rapid development, and warmly welcome contributions from the community.
 
 ## Explore the Examples Section
-* Full implementations using gokfk-regent, Confluentinc images, and Confluent-kafka-go/kafka client
-* Full implementations using gokfk-regent, Wurstmeister images, and Segmentio/kafka client
+* Full implementations using gokfk-regent, confluentinc images, and confluent-kafka-go/kafka client
+* Full implementations using gokfk-regent, wurstmeister images, and segmentio/kafka client
+
 
 ## Implemented
 * TopicNameStrategy for ProtoBuf, JsonSchema, Avro(from the parent project, Confluent-kafka-go)
@@ -23,7 +24,7 @@ $ go get github.com/djedjethai/gokfk-regent
 ```
 
 ## Features
-* Topic-Name-Strategy interface(no breaking change with the mother repo, Confluent-kafka-go)
+* Topic-Name-Strategy interface(no breaking change with the mother repo, confluent-kafka-go/schemaregistry)
 ```
 Serialize(topic string, msg interface{}) ([]byte, error)
 
@@ -61,7 +62,7 @@ func RegisterMessageFactory() func(string, string) (interface{}, error) {
 }
 ```
 
-## Use the RecordNameStrategy(DeserializeRecordName()) with Protobuf, using Segmentio, Wurstmeister, Gokfk-regent
+## Use the RecordNameStrategy(DeserializeRecordName()) with Protobuf, using segmentio, wurstmeister, gokfk-regent
 (see in ./examples for the full implementation)
 ```
 /*
@@ -123,9 +124,6 @@ func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) er
 		fmt.Println(err)
 		return err
 	}
-
-	fmt.Println("count produced message", count)
-	count++
 
 	return nil
 }
@@ -196,7 +194,7 @@ func (c *srConsumer) handleMessageAsInterface(message interface{}, offset int64)
 }
 ``` 
 
-## Use the RecordNameStrategy(DeserializeIntoRecordName()) with AvroSchema, using Confluent-kafka-go, Confluentinc, Gokfk-regent
+## Use the RecordNameStrategy(DeserializeIntoRecordName()) with AvroSchema, using confluent-kafka-go, confluentinc, gokfk-regent
 (see in ./examples for the full implementation)
 ```
 /*
