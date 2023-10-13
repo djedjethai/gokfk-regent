@@ -38,18 +38,6 @@ services:
       KAFKA_RESTART_DELAY: "5"
       ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: "0"
       KAFKA_CREATE_TOPICS: "my-topic"
-        # KAFKA_CONNECT_REST_PORT: 8082
-        # KAFKA_CONNECT_REST_ADVERTISED_HOST_NAME: "localhost"
-        # KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: 0
-        # KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 0
-        # KAFKA_CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-        # KAFKA_CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-        # KAFKA_CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-        # KAFKA_CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-        # KAFKA_CONNECT_INTERNAL_KEY_CONVERTER_SCHEMAS_ENABLE: 0
-        # KAFKA_CONNECT_INTERNAL_VALUE_CONVERTER_SCHEMAS_ENABLE: 0
-        # KAFKA_CONNECT_OFFSET_STORAGE_FILE_FILENAME: "/tmp/connect.offsets"
-        # KAFKA_CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
     depends_on:
     - zookeeper
     ports:

@@ -31,6 +31,7 @@ const (
 	noTimeout                    = -1
 	subjectPerson                = "test.v1.Person"
 	subjectAddress               = "another.v1.Address"
+	groupID                      = "logger-group"
 )
 
 func main() {
@@ -64,24 +65,23 @@ func producer() {
 	}
 
 	for {
-		_, err := producer.ProduceMessage(msg, topic, subjectPerson)
+		err := producer.ProduceMessage(msg, topic, subjectPerson)
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
 
-		_, err = producer.ProduceMessage(city, topic, subjectAddress)
+		err = producer.ProduceMessage(city, topic, subjectAddress)
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
 
-		// log.Println("Message produced, offset is: ", offset)
 		time.Sleep(2 * time.Second)
 	}
 }
 
 // SRProducer interface
 type SRProducer interface {
-	ProduceMessage(msg proto.Message, topic, subject string) (string, error)
+	ProduceMessage(msg proto.Message, topic, subject string) error
 	Close()
 }
 
@@ -116,18 +116,14 @@ func NewProducer(kafkaURL, srURL string) (SRProducer, error) {
 var count int
 
 // ProduceMessage sends serialized message to kafka using schema registry
-func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) (string, error) {
-	// assert the fullyQualifiedName. log an err if mismatch
+func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) error {
 	payload, err := p.serializer.SerializeRecordName(msg, subject)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	// for i := 0; ; i++ {
-	// key := fmt.Sprintf("Key-%d", count)
-	key := fmt.Sprintf("Key")
+	key := fmt.Sprintf("Key-%d", count)
 
-	// key := fmt.Sprintf("Key")
 	kfkmsg := kafka.Message{
 		Key:   []byte(key),
 		Value: payload,
@@ -135,16 +131,13 @@ func (p *srProducer) ProduceMessage(msg proto.Message, topic, subject string) (s
 	err = p.writer.WriteMessages(context.Background(), kfkmsg)
 	if err != nil {
 		fmt.Println(err)
-		return "", err
+		return err
 	}
 
-	// TODO make all of that better, should have the offset....
 	fmt.Println("count produced message", count)
-
 	count++
 
-	// TODO should return the offset
-	return key, nil
+	return nil
 }
 
 // Close schema registry and Kafka
@@ -203,8 +196,6 @@ func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 // NewConsumer returns new consumer with schema registry
 func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 
-	groupID := "logger-group"
-
 	rdr := getKafkaReader(kafkaURL, topic, groupID)
 
 	sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(srURL))
@@ -248,6 +239,8 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string) 
 		}
 	}
 
+	c.deserializer.MessageFactory = c.RegisterMessageFactory()
+
 	fmt.Println("start consuming ... !!")
 	for {
 		m, err := c.reader.ReadMessage(context.Background())
@@ -271,7 +264,7 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string) 
 			fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
 		}
 
-		fmt.Printf("message at topic:%v partition:%v offset:%v	%s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+		fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
 	}
 
 }
