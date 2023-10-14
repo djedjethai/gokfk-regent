@@ -274,7 +274,7 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 		return nil, err
 	}
 
-	fmt.Println("avro_generic.go - Deserialize - info: ", info)
+	// fmt.Println("avro_generic.go - Deserialize - info: ", info)
 
 	writer, name, err := s.toType(info)
 	if err != nil {

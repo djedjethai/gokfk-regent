@@ -23,7 +23,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
+	// "log"
 
 	schemaregistry "github.com/djedjethai/gokfk-regent"
 )
@@ -166,11 +166,11 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 		return -1, err
 	}
 
-	log.Println("serde.go - GetID - subject: ", fullSubject)
+	// log.Println("serde.go - GetID - subject: ", fullSubject)
 
 	if autoRegister {
 
-		log.Println("serde.go - GetID - autoRegister: ", info)
+		// log.Println("serde.go - GetID - autoRegister: ", info)
 		id, err = s.Client.Register(fullSubject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
@@ -181,7 +181,7 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 			return -1, err
 		}
 
-		log.Println("serde.go - GetID - UseSchemaID: ", info)
+		// log.Println("serde.go - GetID - UseSchemaID: ", info)
 
 		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
@@ -195,27 +195,27 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 		if err != nil {
 			return -1, err
 		}
-		log.Println("serde.go - GetID - UseLatest(metadata): ", metadata)
+		// log.Println("serde.go - GetID - UseLatest(metadata): ", metadata)
 		info = schemaregistry.SchemaInfo{
 			Schema:     metadata.Schema,
 			SchemaType: metadata.SchemaType,
 			References: metadata.References,
 		}
-		log.Println("serde.go - GetID - UseLatest: ", info)
+		// log.Println("serde.go - GetID - UseLatest: ", info)
 		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
 			return -1, err
 		}
 	} else {
 
-		log.Println("serde.go - GetID - else   : ", info)
+		// log.Println("serde.go - GetID - else   : ", info)
 		id, err = s.Client.GetID(fullSubject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
 		}
 	}
 
-	log.Println("serde.go - GetID - end id: ", id)
+	// log.Println("serde.go - GetID - end id: ", id)
 	return id, nil
 }
 

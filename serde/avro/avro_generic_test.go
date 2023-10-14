@@ -241,7 +241,6 @@ func TestAvroGenericSerdeDeserializeRecordName(t *testing.T) {
 
 func RegisterMessageFactory() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-		fmt.Println("alllooo: ", name)
 		switch name {
 		case linkedList:
 			return &LinkedList{}, nil

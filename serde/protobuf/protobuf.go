@@ -178,7 +178,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		}
 	}
 
-	fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
+	// fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
 
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
@@ -196,7 +196,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		References: metadata.References,
 	}
 
-	fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
+	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
 	id, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
@@ -482,7 +482,7 @@ func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int
 		return 0, nil, info, err
 	}
 
-	fmt.Println("protobuf.go - DeserializeRecordName - info: ", info)
+	// fmt.Println("protobuf.go - DeserializeRecordName - info: ", info)
 
 	fd, err := s.toFileDesc(info)
 	if err != nil {

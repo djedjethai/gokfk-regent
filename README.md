@@ -23,6 +23,11 @@ As an agile open-source project, we prioritize flexibility, allowing for rapid d
 $ go get github.com/djedjethai/gokfk-regent
 ```
 
+## Testing
+```
+go test -v -cover ./...
+```
+
 ## Features
 * Topic-Name-Strategy interface(no breaking change with the mother repo, confluent-kafka-go/schemaregistry)
 ```

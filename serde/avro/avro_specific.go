@@ -225,7 +225,7 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
 
-	fmt.Println("avro_specific.go - DerializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
+	// fmt.Println("avro_specific.go - DerializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
 
 	writer, err := s.toAvroType(info)
 	if err != nil {

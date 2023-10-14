@@ -310,7 +310,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 		json:    string(schemaJSON),
 	}
 
-	log.Println("schemaregistry_client.go - Register - cacheKey: ", cacheKey)
+	// log.Println("schemaregistry_client.go - Register - cacheKey: ", cacheKey)
 
 	c.schemaToIdCacheLock.RLock()
 	idValue, ok := c.schemaToIdCache.Get(cacheKey)
@@ -320,27 +320,21 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 		return idValue.(int), nil
 	}
 
-	// log.Println("schemaregistry_client.go - Register - schema: ", schema)
-
-	log.Println("schemaregistry_client.go - Register - schamaBF store in metadata: ", schema)
+	// log.Println("schemaregistry_client.go - Register - schamaBF store in metadata: ", schema)
 	metadata := SchemaMetadata{
 		SchemaInfo: schema,
 	}
-	log.Println("schemaregistry_client.go - Register - metadata: ", schema)
-
-	// log.Println("schemaregistry_client.go - Register - metadata: ", metadata)
+	// log.Println("schemaregistry_client.go - Register - metadata: ", schema)
 
 	c.schemaToIdCacheLock.Lock()
 	// another goroutine could have already put it in cache
 	idValue, ok = c.schemaToIdCache.Get(cacheKey)
 	if !ok {
-		log.Println("schemaregistry_client.go - Register - post to sr")
-
-		// log.Println("schemaregistry_client.go - Register - metadata in !OK : ", metadata)
+		// log.Println("schemaregistry_client.go - Register - post to sr")
 
 		err = c.restService.handleRequest(newRequest("POST", versionNormalize, &metadata, url.PathEscape(subject), normalize), &metadata)
 		if err == nil {
-			log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
+			// log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
 			c.schemaToIdCache.Put(cacheKey, metadata.ID)
 
 			// save the subject matching the ID
@@ -351,7 +345,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 			metadata.ID = -1
 		}
 	} else {
-		log.Println("schemaregistry_client.go - Register - idValue2: ", idValue)
+		// log.Println("schemaregistry_client.go - Register - idValue2: ", idValue)
 		metadata.ID = idValue.(int)
 	}
 	c.schemaToIdCacheLock.Unlock()
@@ -362,7 +356,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 // Returns Schema object on success
 func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 
-	log.Println("schemaregistry_client.go - GetByID - id: ", id)
+	// log.Println("schemaregistry_client.go - GetByID - id: ", id)
 
 	cacheKey := subjectOnlyID{id}
 
@@ -371,7 +365,7 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 	c.idToSchemaCacheLock.RUnlock()
 
 	if ok {
-		log.Println("schemaregistry_client.go - GetByID - OK cache: ", *subjIDPayload.(*SchemaInfo))
+		// log.Println("schemaregistry_client.go - GetByID - OK cache: ", *subjIDPayload.(*SchemaInfo))
 
 		return *subjIDPayload.(*SchemaInfo), nil
 	}
@@ -383,7 +377,7 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 	subjIDPayload, ok = c.idToSchemaCache.Get(cacheKey)
 	if !ok {
 		var err error
-		log.Println("schemaregistry_client.go - GetBySubjectAndID - Query API only ID: ", subject)
+		// log.Println("schemaregistry_client.go - GetBySubjectAndID - Query API only ID: ", subject)
 		err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
 		if err == nil {
 
@@ -391,22 +385,21 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 			newInfo.SchemaType = metadata.SchemaType
 			newInfo.References = metadata.References
 
-			log.Println("schemaregistry_client.go - GetByID - metatdata: ", metadata)
+			// log.Println("schemaregistry_client.go - GetByID - metatdata: ", metadata)
 
 			c.idToSchemaCache.Put(cacheKey, newInfo)
 		} else {
-			// NOTE do I let it ??
 			return *newInfo, fmt.Errorf("Invalid server error")
 		}
 
 	} else {
-		log.Println("schemaregistry_client.go - GetBySubjectAndID - OK cache3: ", *subjIDPayload.(*SchemaInfo))
+		// log.Println("schemaregistry_client.go - GetBySubjectAndID - OK cache3: ", *subjIDPayload.(*SchemaInfo))
 
 		// newInfo = subjIDPayload.(subjectOnlyIDPayload).SchemaInfo
 		newInfo = subjIDPayload.(*SchemaInfo)
 	}
 
-	log.Println("schemaregistry_client.go - GetBySubjectAndID - retrurn newInfo: ", *newInfo)
+	// log.Println("schemaregistry_client.go - GetBySubjectAndID - retrurn newInfo: ", *newInfo)
 
 	c.idToSchemaCacheLock.Unlock()
 	return *newInfo, err

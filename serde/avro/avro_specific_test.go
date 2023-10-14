@@ -217,7 +217,6 @@ func TestAvroSpecificSerdeDeserializeRecordName(t *testing.T) {
 
 func RegisterMessageFactorySpecific() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-		fmt.Println("alllooo: ", name)
 		switch name {
 		case exampleNamespace:
 			return &rn.DemoSchema{}, nil
