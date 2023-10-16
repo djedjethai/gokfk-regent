@@ -14,9 +14,10 @@ As an agile open-source project, we prioritize flexibility, allowing for rapid d
 ## Implemented
 * TopicNameStrategy for ProtoBuf, JsonSchema, Avro(from the parent project, Confluent-kafka-go)
 * RecordNameStrategy for Protobuf, JsonSchema, Avro  
+* TopicRecordNameStrategy for Protobuf(no test yet) 
 
 ## Working on
-* Implementing the TopicRecordNameStrategy for Protobuf, Json and Avro
+* Implementing the TopicRecordNameStrategy for Json and Avro
 
 ## Install
 ``` bash
@@ -48,6 +49,14 @@ SerializeRecordName(msg interface{}, subject ...string) ([]byte, error)
 DeserializeRecordName(payload []byte) (interface{}, error)
 // DeserializeIntoRecordName will unmarshal data into the given subjects' value(object).
 DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
+```
+
+* Topic-Record-Name-Strategy interface
+```
+SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error)
+
+DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error)
+DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error
 ```
 
 * In the case of Deserialize() and DeserializeRecordName(), the default MessageFactory() handler can be overridden.

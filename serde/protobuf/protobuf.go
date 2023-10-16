@@ -154,9 +154,70 @@ func (s *Deserializer) ConfigureDeserializer(client schemaregistry.Client, serde
 	return nil
 }
 
+func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
+	if msg == nil {
+		return nil, nil
+	}
+	var protoMsg proto.Message
+	switch t := msg.(type) {
+	case proto.Message:
+		protoMsg = t
+	default:
+		return nil, fmt.Errorf("serialization target must be a protobuf message")
+	}
+
+	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
+
+	fullName := string(messageDescriptor.FullName())
+
+	if len(subject) > 0 {
+		if fullName != subject[0] {
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, fullName, subject[0])
+		}
+	}
+
+	// fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
+
+	autoRegister := s.Conf.AutoRegisterSchemas
+	normalize := s.Conf.NormalizeSchemas
+	fileDesc, deps, err := s.toProtobufSchema(protoMsg)
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := s.resolveDependencies(fileDesc, deps, "", autoRegister, normalize)
+	if err != nil {
+		return nil, err
+	}
+	info := schemaregistry.SchemaInfo{
+		Schema:     metadata.Schema,
+		SchemaType: metadata.SchemaType,
+		References: metadata.References,
+	}
+
+	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
+
+	// add the topic to the fullname
+	fullName = fmt.Sprintf("%s-%s", topic, fullName)
+	id, err := s.GetID(fullName, protoMsg, info)
+	if err != nil {
+		return nil, err
+	}
+	msgIndexBytes := toMessageIndexBytes(protoMsg.ProtoReflect().Descriptor())
+	msgBytes, err := proto.Marshal(protoMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+
+}
+
 // SerializeRecordName serialize a protbuf data, here set to match the interface
 func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
-	// return s.Serialize(subject, msg)
 	if msg == nil {
 		return nil, nil
 	}
@@ -441,6 +502,10 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	return protoMsg, err
 }
 
+func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
+	return s.DeserializeRecordName(payload)
+}
+
 // DeserializeRecordName deserialize events with subjects register with the RecordNameStrategy
 func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
@@ -525,6 +590,10 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	}
 
 	return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+}
+
+func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
+	return s.DeserializeIntoRecordName(subjects, payload)
 }
 
 // DeserializeIntoRecordName deserialize bytes with recordNameStrategy to some given objects

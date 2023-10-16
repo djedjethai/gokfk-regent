@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"reflect"
 
 	schemaregistry "github.com/djedjethai/gokfk-regent"
 	"github.com/djedjethai/gokfk-regent/serde"
@@ -174,6 +175,8 @@ func (p *srProducer) Close() {
 * CONSUMER
 * ===============================
 **/
+var person = &pb.Person{}
+var address = &pb.Address{}
 
 func consumer() {
 	consumer, err := NewConsumer(kafkaURL, srURL)
@@ -219,10 +222,8 @@ func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 // NewConsumer returns new consumer with schema registry
 func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 
-	// consumer for topic
 	rdr := getKafkaReader(kafkaURL, topic, groupID)
 
-	// consumer for secondTopic
 	secondRdr := getKafkaReader(kafkaURL, secondTopic, groupID)
 
 	sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(srURL))
@@ -255,42 +256,22 @@ func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{},
 	}
 }
 
-func (c *srConsumer) consumeTopic(topic string, m kafka.Message) error {
-	// msg, err := c.deserializer.DeserializeRecordName(m.Value)
-	msg, err := c.deserializer.DeserializeTopicRecordName(topic, m.Value)
-	if err != nil {
-		return err
-	}
-
-	// with RegisterMessageFactory()
-	if _, ok := msg.(*pb.Person); ok {
-		fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
-	} else {
-
-		fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
-	}
-
-	// without RegisterMessageFactory()
-	// c.handleMessageAsInterface(msg, int64(m.Offset))
-
-	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
-
-	return nil
-}
-
-func (c *srConsumer) consumeTopicInto(topic string, m kafka.Message, receiver map[string]interface{}) error {
-	// msg, err := c.deserializer.DeserializeRecordName(m.Value)
-	err := c.deserializer.DeserializeIntoTopicRecordName(topic, receiver, m.Value)
-	if err != nil {
-		return err
-	}
-	fmt.Println("person: ", receiver[subjectPerson].(*pb.Person).Name, " - ", receiver[subjectPerson].(*pb.Person).Age)
-	fmt.Println("address: ", receiver[subjectAddress].(*pb.Address).City, " - ", receiver[subjectAddress].(*pb.Address).Street)
-
-	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
-
-	return nil
-}
+// func (c *srConsumer) consumeTopic(topic string) error {
+// 	// msg, err := c.deserializer.DeserializeRecordName(m.Value)
+// 	msg, err := c.deserializer.DeserializeTopicRecordName(topic, m.Value)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if _, ok := msg.(*pb.Person); ok {
+// 		fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
+// 	} else {
+//
+// 		fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
+// 	}
+//
+// 	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
+//
+// }
 
 // consumer
 func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
@@ -304,14 +285,6 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
 		}
 	}
 
-	receiverTopic := make(map[string]interface{})
-	receiverTopic[subjectPerson] = &pb.Person{}
-	receiverTopic[subjectAddress] = &pb.Address{}
-
-	receiverSecondTopic := make(map[string]interface{})
-	receiverSecondTopic[subjectPerson] = &pb.Person{}
-	receiverSecondTopic[subjectAddress] = &pb.Address{}
-
 	c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 	fmt.Println("start consuming ... !!")
@@ -320,9 +293,21 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		fmt.Println("grrrrr: ", reflect.TypeOf(m))
 		if m.Topic == topic {
-			// _ = c.consumeTopic(topic, m)
-			_ = c.consumeTopicInto(topic, m, receiverTopic)
+			msg, err := c.deserializer.DeserializeTopicRecordName(topic, m.Value)
+			if err != nil {
+				return err
+			}
+			if _, ok := msg.(*pb.Person); ok {
+				fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
+			} else {
+
+				fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
+			}
+
+			fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
+
 		}
 
 		mSecond, err := c.secondReader.ReadMessage(context.Background())
@@ -330,9 +315,24 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
 			log.Fatalln(err)
 		}
 		if mSecond.Topic == secondTopic {
-			// _ = c.consumeTopic(secondTopic, mSecond)
-			_ = c.consumeTopicInto(secondTopic, mSecond, receiverSecondTopic)
+			// msg, err := c.deserializer.DeserializeRecordName(m.Value)
+			msg, err := c.deserializer.DeserializeTopicRecordName(secondTopic, mSecond.Value)
+			if err != nil {
+				return err
+			}
+			if _, ok := msg.(*pb.Person); ok {
+				fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
+			} else {
+
+				fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
+			}
+
+			fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", mSecond.Topic, mSecond.Partition, mSecond.Offset, string(mSecond.Key))
 		}
+
+		// without RegisterMessageFactory()
+		// c.handleMessageAsInterface(msg, int64(m.Offset))
+
 	}
 
 }

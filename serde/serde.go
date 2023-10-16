@@ -62,6 +62,7 @@ type Serializer interface {
 	// For example, in Protobuf, messages are always a pointer to a struct and never just a struct.
 	Serialize(topic string, msg interface{}) ([]byte, error)
 	SerializeRecordName(msg interface{}, subject ...string) ([]byte, error)
+	SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error)
 	Close()
 }
 
@@ -75,6 +76,9 @@ type Deserializer interface {
 
 	DeserializeRecordName(payload []byte) (interface{}, error)
 	DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
+
+	DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error)
+	DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error
 
 	Close()
 }

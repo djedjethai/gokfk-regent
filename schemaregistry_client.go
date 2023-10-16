@@ -482,7 +482,7 @@ func (c *client) GetID(subject string, schema SchemaInfo, normalize bool) (id in
 	} else {
 		metadata.ID = idValue.(int)
 	}
-	log.Println("schemaregistry_client.go - GetID - idValue end: ", idValue)
+	// log.Println("schemaregistry_client.go - GetID - idValue end: ", idValue)
 	c.schemaToIdCacheLock.Unlock()
 	return metadata.ID, err
 }
