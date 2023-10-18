@@ -99,13 +99,14 @@ func (s *SpecificSerializer) Serialize(topic string, msg interface{}) ([]byte, e
 	return payload, nil
 }
 
-func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string, msg interface{}) ([]byte, string, error) {
+func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string, msg interface{}, topic ...string) ([]byte, string, string, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(avroStr), &data); err != nil {
 		fmt.Println("Error unmarshaling JSON:", err)
 	}
 
 	var fullyQualifiedName string
+	fullyQualifiedNameWithoutTopic := ""
 	parts := strings.Split(data["name"].(string), ".")
 	if len(parts) > 0 {
 		var namespace string
@@ -138,15 +139,64 @@ func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string, msg i
 
 		}
 		data["name"] = parts[len(parts)-1]
+		if len(topic) > 0 {
+			fullyQualifiedNameWithoutTopic = namespace
+			namespace = fmt.Sprintf("%s-%s", topic[0], namespace)
+		}
 		data["namespace"] = namespace
 		fullyQualifiedName = fmt.Sprintf("%v.%v", namespace, data["name"])
 	}
 	modifiedJSON, err := json.Marshal(data)
 	if err != nil {
-		return nil, fullyQualifiedName, err
+		return nil, fullyQualifiedName, fullyQualifiedNameWithoutTopic, err
 	}
 
-	return modifiedJSON, fullyQualifiedName, nil
+	return modifiedJSON, fullyQualifiedName, fullyQualifiedNameWithoutTopic, nil
+}
+
+func (s *SpecificSerializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
+	if msg == nil {
+		return nil, nil
+	}
+
+	var avroMsg SpecificAvroMessage
+	switch t := msg.(type) {
+	case SpecificAvroMessage:
+		avroMsg = t
+	default:
+		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
+	}
+
+	modifiedJSON, fqnTopic, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msg, topic)
+	if err != nil {
+		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
+		}
+	}
+
+	var id = 0
+	info := schemaregistry.SchemaInfo{
+		Schema: string(modifiedJSON),
+	}
+
+	id, err = s.GetID(fqnTopic, avroMsg, info)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	err = avroMsg.Serialize(&buf)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := s.WriteBytes(id, buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
 }
 
 // Serialize implements serialization of generic Avro data
@@ -163,7 +213,7 @@ func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...str
 		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
 	}
 
-	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msg)
+	modifiedJSON, msgFQN, _, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msg)
 	if err != nil {
 		fmt.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
 	}
@@ -204,6 +254,10 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 	}
 	s.MessageFactory = s.avroMessageFactory
 	return s, nil
+}
+
+func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
+	return s.DeserializeRecordName(payload)
 }
 
 func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
@@ -277,6 +331,10 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 		return nil, err
 	}
 	return avroMsg, nil
+}
+
+func (s *SpecificDeserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
+	return s.DeserializeIntoRecordName(subjects, payload)
 }
 
 func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {

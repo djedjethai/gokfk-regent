@@ -272,7 +272,6 @@ package main
 // }
 //
 // // Run consumer
-// // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
 // func (c *srConsumer) Run(topic string) error {
 // 	if err := c.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 // 		return err

@@ -83,6 +83,57 @@ func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string
 	return json.Marshal(data)
 }
 
+func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
+	if msg == nil {
+		return nil, nil
+	}
+
+	msgFQN := reflect.TypeOf(msg).String()
+	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
+		}
+	}
+
+	val := reflect.ValueOf(msg)
+	if val.Kind() == reflect.Ptr {
+		// avro.TypeOf expects an interface containing a non-pointer
+		msg = val.Elem().Interface()
+	}
+	avroType, err := avro.TypeOf(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	// add topic to the fullyQualifiedName
+	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
+
+	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroType.String(), msgFQN)
+	if err != nil {
+		return nil, err
+	}
+
+	info := schemaregistry.SchemaInfo{
+		Schema: string(modifiedJSON),
+	}
+
+	id, err := s.GetID(msgFQN, msg, info)
+	if err != nil {
+		return nil, err
+	}
+	msgBytes, _, err := avro.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := s.WriteBytes(id, msgBytes)
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
 // Serialize implements serialization of generic Avro data
 func (s *GenericSerializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
@@ -176,6 +227,10 @@ func NewGenericDeserializer(client schemaregistry.Client, serdeType serde.Type, 
 	return s, nil
 }
 
+func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
+	return s.DeserializeRecordName(payload)
+}
+
 func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -231,6 +286,11 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 
 }
 
+func (s *GenericDeserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
+	return s.DeserializeIntoRecordName(subjects, payload)
+}
+
+// DeserializeIntoRecordName implements deserialization of generic Avro data
 func (s *GenericDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
 	if payload == nil {
 		return fmt.Errorf("Empty payload")
