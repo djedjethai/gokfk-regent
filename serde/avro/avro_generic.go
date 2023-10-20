@@ -91,6 +91,9 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
+	// add topic to the fullyQualifiedName
+	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
+
 	if len(subject) > 0 {
 		if msgFQN != subject[0] {
 			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
@@ -106,9 +109,6 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	if err != nil {
 		return nil, err
 	}
-
-	// add topic to the fullyQualifiedName
-	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
 
 	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroType.String(), msgFQN)
 	if err != nil {
@@ -228,7 +228,65 @@ func NewGenericDeserializer(client schemaregistry.Client, serdeType serde.Type, 
 }
 
 func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
-	return s.DeserializeRecordName(payload)
+	if payload == nil {
+		return nil, nil
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		return nil, err
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	writer, name, err := s.toType(info)
+	if err != nil {
+		return nil, err
+	}
+
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	if err != nil {
+		return nil, err
+	}
+
+	if msg == struct{}{} {
+		// reset the namespace to the Go fullyQualifiedName
+		namespace := strings.TrimPrefix(namespace, fmt.Sprintf("%s-", topic))
+		data["namespace"] = namespace
+		tmp, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		info.Schema = string(tmp)
+
+		codec, err := goavro.NewCodec(info.Schema)
+		if err != nil {
+			return nil, err
+		}
+
+		native, _, err := codec.NativeFromBinary(payload[5:])
+		if err != nil {
+			return nil, err
+		}
+
+		return native, nil
+	}
+
+	_, err = avro.Unmarshal(payload[5:], msg, writer)
+	return msg, err
+
 }
 
 func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
@@ -249,8 +307,6 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-
-	// fmt.Println("see the info schema: ", info.Schema)
 
 	writer, name, err := s.toType(info)
 	if err != nil {
@@ -278,6 +334,7 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 			return nil, err
 		}
 
+		fmt.Println("see the native: ", native)
 		return native, nil
 	}
 
