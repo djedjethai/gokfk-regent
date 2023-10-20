@@ -206,6 +206,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 
 }
 
+// SerializeTopicRecordName implements serialization of generic data to JSON
 func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -214,6 +215,9 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	// get the fully qualified name
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
+
+	// add topic to the fullyQualifiedName
+	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
 
 	if len(subject) > 0 {
 		if msgFQN != subject[0] {
@@ -228,9 +232,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	if err != nil {
 		return nil, err
 	}
-
-	// add topic to the fullyQualifiedName
-	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
 
 	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
 	if err != nil {
@@ -361,6 +362,7 @@ func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (s
 	return string(fieldValueBytes), nil
 }
 
+// DeserializeTopicRecordName deserialise bytes
 func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
 	return s.DeserializeRecordName(payload)
 }
@@ -419,6 +421,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	return msg, nil
 }
 
+// DeserializeIntoTopicRecordName deserialize bytes into the map interface{}
 func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
 	return s.DeserializeIntoRecordName(subjects, payload)
 }

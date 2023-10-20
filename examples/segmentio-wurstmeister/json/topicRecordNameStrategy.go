@@ -77,7 +77,8 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
+		err = producer.ProduceMessage(addr, topic, "main.Person")
+		// err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -138,6 +139,7 @@ var count int
 // ProduceMessage sends serialized message to kafka using schema registry
 func (p *srProducer) ProduceMessage(msg interface{}, topic, subject string) error {
 
+	subject = fmt.Sprintf("%s-%s", topic, subject)
 	payload, err := p.serializer.SerializeTopicRecordName(topic, msg, subject)
 	if err != nil {
 		return err
@@ -192,7 +194,6 @@ func consumer() {
 	if err != nil {
 		log.Println("ConsumerRun Error: ", err)
 	}
-
 }
 
 // SRConsumer interface
@@ -269,15 +270,20 @@ func (c *srConsumer) consumeTopic(topic string, m kafka.Message) error {
 		return err
 	}
 
-	// with RegisterMessageFactory()
-	if _, ok := msg.(*Person); ok {
-		fmt.Println("Person: ", msg.(*Person).Name, " - ", msg.(*Person).Age)
-	} else {
-		fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
-	}
+	// // with RegisterMessageFactory()
+	// if topic == "my-topic" {
+	// 	if _, ok := msg.(*Person); ok {
+	// 		fmt.Println("Person: ", msg.(*Person).Name, " - ", msg.(*Person).Age)
+	// 	} else {
+	// 		fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
+	// 	}
+	// }
+	// if topic == "my-second" {
+	// 	fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
+	// }
 
 	// without RegisterMessageFactory()
-	// c.handleMessageAsInterface(msg, int64(m.Offset))
+	c.handleMessageAsInterface(msg, int64(m.Offset))
 
 	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
 
@@ -308,15 +314,13 @@ func (c *srConsumer) consumeTopicInto(topic string, m kafka.Message, receiver ma
 // consumer
 func (c *srConsumer) Run() error {
 
-	// register the MessageFactory is facultatif
-	// but is it useful to allow the event receiver to be an initialized object
-	c.deserializer.MessageFactory = c.RegisterMessageFactory()
+	// register the MessageFactory is optional
+	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 	// case recordIntoTopicNameSTrategy
 	var pxTopic = Person{}
 	var addrTopic = Address{}
 	var addrSecondTopic = Address{}
-
 	msgFQN := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(pxTopic).String())
 	addrFQNTopic := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(addrTopic).String())
 	addrFQNSecondTopic := fmt.Sprintf("%s-%s", secondTopic, reflect.TypeOf(addrSecondTopic).String())
@@ -332,8 +336,8 @@ func (c *srConsumer) Run() error {
 			log.Fatalln(err)
 		}
 		if m.Topic == topic {
-			// _ = c.consumeTopic(topic, m)
-			_ = c.consumeTopicInto(topic, m, ref)
+			_ = c.consumeTopic(topic, m)
+			// _ = c.consumeTopicInto(topic, m, ref)
 		}
 
 		mSecond, err := c.secondReader.ReadMessage(context.Background())
@@ -341,8 +345,8 @@ func (c *srConsumer) Run() error {
 			log.Fatalln(err)
 		}
 		if mSecond.Topic == secondTopic {
-			// _ = c.consumeTopic(secondTopic, mSecond)
-			_ = c.consumeTopicInto(secondTopic, mSecond, ref)
+			_ = c.consumeTopic(secondTopic, mSecond)
+			// _ = c.consumeTopicInto(secondTopic, mSecond, ref)
 		}
 	}
 
