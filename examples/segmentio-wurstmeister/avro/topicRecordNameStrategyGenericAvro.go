@@ -248,8 +248,6 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // RegisterMessageFactory will overwrite the default one
 func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
 	return func(subject string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subject)
-		fmt.Println("The Name: ", name)
 		switch name {
 		case "my-topic-main.Person":
 			return &Person{}, nil
@@ -263,26 +261,26 @@ func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{},
 }
 
 func (c *srConsumer) consumeTopic(topic string, m kafka.Message) error {
-	// msg, err := c.deserializer.DeserializeRecordName(m.Value)
+
 	msg, err := c.deserializer.DeserializeTopicRecordName(topic, m.Value)
 	if err != nil {
 		return err
 	}
 
-	// // with RegisterMessageFactory()
-	// if topic == "my-topic" {
-	// 	if _, ok := msg.(*Person); ok {
-	// 		fmt.Println("Person: ", msg.(*Person).Name, " - ", msg.(*Person).Age)
-	// 	} else {
-	// 		fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
-	// 	}
-	// }
-	// if topic == "my-second" {
-	// 	fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
-	// }
+	// with RegisterMessageFactory()
+	if topic == "my-topic" {
+		if _, ok := msg.(*Person); ok {
+			fmt.Println("Person: ", msg.(*Person).Name, " - ", msg.(*Person).Age)
+		} else {
+			fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
+		}
+	}
+	if topic == "my-second" {
+		fmt.Println("Address: ", msg.(*Address).City, " - ", msg.(*Address).Street)
+	}
 
 	// without RegisterMessageFactory()
-	c.handleMessageAsInterface(msg, int64(m.Offset))
+	// c.handleMessageAsInterface(msg, int64(m.Offset))
 
 	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
 
@@ -291,7 +289,6 @@ func (c *srConsumer) consumeTopic(topic string, m kafka.Message) error {
 
 func (c *srConsumer) consumeTopicInto(topic string, m kafka.Message, receiver map[string]interface{}) error {
 
-	// msg, err := c.deserializer.DeserializeRecordName(m.Value)
 	err := c.deserializer.DeserializeIntoTopicRecordName(topic, receiver, m.Value)
 	if err != nil {
 		return err
@@ -314,7 +311,7 @@ func (c *srConsumer) consumeTopicInto(topic string, m kafka.Message, receiver ma
 func (c *srConsumer) Run() error {
 
 	// register the MessageFactory is optional
-	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+	c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 	// case recordIntoTopicNameSTrategy
 	var pxTopic = Person{}
@@ -335,8 +332,8 @@ func (c *srConsumer) Run() error {
 			log.Fatalln(err)
 		}
 		if m.Topic == topic {
-			_ = c.consumeTopic(topic, m)
-			// _ = c.consumeTopicInto(topic, m, ref)
+			// _ = c.consumeTopic(topic, m)
+			_ = c.consumeTopicInto(topic, m, ref)
 		}
 
 		mSecond, err := c.secondReader.ReadMessage(context.Background())
@@ -344,8 +341,8 @@ func (c *srConsumer) Run() error {
 			log.Fatalln(err)
 		}
 		if mSecond.Topic == secondTopic {
-			_ = c.consumeTopic(secondTopic, mSecond)
-			// _ = c.consumeTopicInto(secondTopic, mSecond, ref)
+			// _ = c.consumeTopic(secondTopic, mSecond)
+			_ = c.consumeTopicInto(secondTopic, mSecond, ref)
 		}
 	}
 
