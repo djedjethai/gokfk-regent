@@ -1,0 +1,15 @@
+{
+    "type": "record",
+    "name": "Job",
+    "fields": [
+        {
+            "name": "job",
+            "type": "string"
+        },
+        {
+            "name": "field",
+            "type": "string"
+        }
+    ]
+}
+	
