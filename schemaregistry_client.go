@@ -22,7 +22,7 @@ package schemaregistry
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	// "log"
 	"net/url"
 	"strings"
 	"sync"
@@ -314,7 +314,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 	c.schemaToIdCacheLock.RLock()
 	idValue, ok := c.schemaToIdCache.Get(cacheKey)
-	log.Println("schemaregistry_client.go - Register - idValue: ", idValue)
+	// log.Println("schemaregistry_client.go - Register - idValue: ", idValue)
 	c.schemaToIdCacheLock.RUnlock()
 	if ok {
 		return idValue.(int), nil

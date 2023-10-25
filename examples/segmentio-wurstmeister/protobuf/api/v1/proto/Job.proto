@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option go_package = "./api/v1/proto";
+
+message Job {
+	string job = 1;
+	string field = 5;
+};
+
+
+
