@@ -83,7 +83,7 @@ type SchemaInfo struct {
 	SchemaType string      `json:"schemaType,omitempty"`
 	References []Reference `json:"references,omitempty"`
 	// SchemaFullyQualifiedName string      `json:"schemaFullyQualifiedName,omitempty"` //added
-	Subject string `json:"subject,omitempty"`
+	Subject []string `json:"subject,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaler interface
@@ -93,7 +93,7 @@ func (sd *SchemaInfo) MarshalJSON() ([]byte, error) {
 		SchemaType string      `json:"schemaType,omitempty"`
 		References []Reference `json:"references,omitempty"`
 		// SchemaFullyQualifiedName string      `json:"schemaFullyQualifiedName,omitempty"`
-		Subject string `json:"subject,omitempty"`
+		Subject []string `json:"subject,omitempty"`
 	}{
 		sd.Schema,
 		sd.SchemaType,
@@ -111,7 +111,7 @@ func (sd *SchemaInfo) UnmarshalJSON(b []byte) error {
 		SchemaType string      `json:"schemaType,omitempty"`
 		References []Reference `json:"references,omitempty"`
 		// SchemaFullyQualifiedName string      `json:"schemaFullyQualifiedName,omitempty"`
-		Subject string `json:"subject,omitempty"`
+		Subject []string `json:"subject,omitempty"`
 	}
 
 	err = json.Unmarshal(b, &tmp)
@@ -394,7 +394,7 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 			err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
 			if err == nil {
 				fmt.Println("See the metadata from urrrll-------------------------------: ", response)
-				newInfo.Subject = response[0]
+				newInfo.Subject = response
 			} else {
 				return *newInfo, fmt.Errorf("Invalid server error")
 			}

@@ -203,7 +203,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	}
 
 	fmt.Println("In protobuf.go - SerializeTopicRecordName - fullName: ", fullName)
-	info.Subject = fullName
+	// info.Subject = fullName
 
 	id, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
@@ -273,7 +273,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		SchemaType: metadata.SchemaType,
 		References: metadata.References,
 	}
-	info.Subject = fullName
+	// info.Subject = fullName
 
 	// // my try...............................................
 	// fmt.Println("see the mssggg: ", protoMsg)
@@ -548,9 +548,19 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	fmt.Println("protobuf.go - DeserializeRecordName - info.Subject: ", info.Subject)
+	subject := info.Subject[0]
+	if len(info.Subject) > 1 {
+		for _, v := range info.Subject {
+			if strings.HasPrefix(v, topic) {
+				subject = v
+				break
+			}
+		}
+	}
+	fmt.Println("protobuf.go - DeserializeTopicRecordName - info.Subject: ", subject)
 
-	msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
+	// msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
+	msg, err := s.MessageFactory(subject, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
@@ -603,8 +613,38 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	// //	msgFullyQlfName = "Job"
 	// // }
 	// // end ................................................
+	subject := info.Subject[0]
+	if len(info.Subject) > 1 {
+		partsMsg := strings.Split(msgFullyQlfName, ".")
+		for _, v := range info.Subject {
+			if len(partsMsg) > 1 {
+				if strings.HasPrefix(v, msgFullyQlfName) {
+					subject = v
+					break
+				}
+			} else {
+				parts := strings.Split(v, "-")
+				if len(parts) >= 1 {
+					// [0] == proto-Job and I have Job
+					// NOTE it can have main-Job and internal-Job.... ??
+					// but I am in recordName so I do not really care...
+					// but if custom receiver then how to identify ???
 
-	msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
+					topic := parts[0]
+					fmt.Println(topic)
+				}
+			}
+		}
+		// } else {
+		// 	// get the
+		// }
+	}
+
+	fmt.Println("protobuf.go - DeserializeRecordName - info.Subject[0]: ", subject)
+	fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
+
+	// TODO info.Subject[0] is it always 0 ????
+	msg, err := s.MessageFactory(subject, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +759,8 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		return err
 	}
 
-	msgFullyQlfName := strings.TrimSuffix(info.Subject, "-value")
+	// TODO info.Subject[] is it always [0] ???
+	msgFullyQlfName := strings.TrimSuffix(info.Subject[0], "-value")
 	msgFullyQlfName = strings.TrimSuffix(msgFullyQlfName, "-key")
 	if msg, ok := subjects[msgFullyQlfName]; ok {
 		var protoMsg proto.Message
