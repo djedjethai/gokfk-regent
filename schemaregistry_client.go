@@ -22,7 +22,7 @@ package schemaregistry
 import (
 	"encoding/json"
 	"fmt"
-	// "log"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -300,6 +300,9 @@ func NewClient(conf *Config) (Client, error) {
 
 // Register registers Schema aliased with subject
 func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
+
+	// log.Println("schemaregistry_client.go - Register - schemaInfo: ", schema)
+
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
 		return -1, err
@@ -334,7 +337,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 		err = c.restService.handleRequest(newRequest("POST", versionNormalize, &metadata, url.PathEscape(subject), normalize), &metadata)
 		if err == nil {
-			// log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
+			log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
 			c.schemaToIdCache.Put(cacheKey, metadata.ID)
 
 			// save the subject matching the ID
@@ -386,6 +389,15 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 			newInfo.References = metadata.References
 
 			// log.Println("schemaregistry_client.go - GetByID - metatdata: ", metadata)
+			// get the schema subject matching the schema id
+			var response []string
+			err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
+			if err == nil {
+				fmt.Println("See the metadata from urrrll-------------------------------: ", response)
+				newInfo.Subject = response[0]
+			} else {
+				return *newInfo, fmt.Errorf("Invalid server error")
+			}
 
 			c.idToSchemaCache.Put(cacheKey, newInfo)
 		} else {

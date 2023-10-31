@@ -170,6 +170,11 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
 
 	fullName := string(messageDescriptor.FullName())
+	partsMsg := strings.Split(fullName, ".")
+	if len(partsMsg) < 2 {
+		msgFQNGo := reflect.TypeOf(msg).String()
+		fullName = strings.TrimLeft(msgFQNGo, "*")
+	}
 
 	// add the topic to the fullyQualifiedName
 	fullName = fmt.Sprintf("%s-%s", topic, fullName)
@@ -197,7 +202,8 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		References: metadata.References,
 	}
 
-	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
+	fmt.Println("In protobuf.go - SerializeTopicRecordName - fullName: ", fullName)
+	info.Subject = fullName
 
 	id, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
@@ -215,32 +221,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	}
 	return payload, nil
 
-}
-
-func insertPackage(schema, packageToAdd string) string {
-	lines := strings.Split(schema, "\n")
-	var modifiedLine = []string{}
-
-	// Find the first non-empty line (likely the first option or message declaration)
-	// var firstNonEmptyLine int
-	for i, line := range lines {
-		fmt.Println("iii: ", i)
-		fmt.Println("Line: ", line)
-		if i == 1 {
-			fmt.Println("add the line...: ", packageToAdd)
-			modifiedLine = append(modifiedLine, packageToAdd)
-		}
-		modifiedLine = append(modifiedLine, line)
-		// if strings.TrimSpace(line) != "" {
-		// 	firstNonEmptyLine = i
-		// 	break
-		// }
-	}
-
-	// Insert the package declaration before the first non-empty line
-	// lines = append(lines[:firstNonEmptyLine], append([]string{packageToAdd}, lines[firstNonEmptyLine:]...)...)
-
-	return strings.Join(modifiedLine, "\n")
 }
 
 // SerializeRecordName serialize a protbuf data
@@ -262,22 +242,12 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 	fullName := string(messageDescriptor.FullName())
 
 	// if protobuf does not define a package name, add the Go fullyQualifiedName.......
-	var gopackagename = ""
+	// var gopackagename = ""
 	partsMsg := strings.Split(fullName, ".")
 	if len(partsMsg) < 2 {
 		msgFQNGo := reflect.TypeOf(msg).String()
 		fullName = strings.TrimLeft(msgFQNGo, "*")
-
-		goFQNelt := strings.Split(msgFQNGo, ".")
-		if len(goFQNelt) > 1 {
-			gopackagename = goFQNelt[0]
-			gopackagename = strings.TrimLeft(gopackagename, "*")
-		}
-		fmt.Println("see the Go fqn: ", msgFQNGo)
 	}
-
-	fmt.Println("see the gopackagename: ", gopackagename)
-
 	// end tryyyy...................................
 
 	if len(subject) > 0 {
@@ -303,21 +273,22 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		SchemaType: metadata.SchemaType,
 		References: metadata.References,
 	}
+	info.Subject = fullName
 
-	// my try...............................................
-	fmt.Println("see the mssggg: ", protoMsg)
-	fmt.Println("see the fullName: ", fullName)
-	fmt.Println("see the reflect msg: ", reflect.TypeOf(msg).String())
-	if gopackagename != "" {
-		fmt.Println("aaaaaaaaadddddddddddddddddddddddddddddd")
-		// packageToAdd := "package goFullyQualifiedName.proto;"
-		// TODO set "package goFullyQualifiedName" as a const
-		packageToAdd := fmt.Sprintf("package goFullyQualifiedName.%s;", gopackagename)
-		info.Schema = insertPackage(info.Schema, packageToAdd)
-	}
-	fmt.Println("see the info schema affter....: ", info.Schema)
+	// // my try...............................................
+	// fmt.Println("see the mssggg: ", protoMsg)
+	// fmt.Println("see the fullName: ", fullName)
+	// fmt.Println("see the reflect msg: ", reflect.TypeOf(msg).String())
+	// if gopackagename != "" {
+	// 	fmt.Println("aaaaaaaaadddddddddddddddddddddddddddddd")
+	// 	// packageToAdd := "package goFullyQualifiedName.proto;"
+	// 	// TODO set "package goFullyQualifiedName" as a const
+	// 	packageToAdd := fmt.Sprintf("package goFullyQualifiedName.%s;", gopackagename)
+	// 	info.Schema = insertPackage(info.Schema, packageToAdd)
+	// }
+	// fmt.Println("see the info schema affter....: ", info.Schema)
 
-	// end my try................................
+	// // end my try................................
 
 	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
@@ -577,17 +548,13 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	subject, err := s.SubjectNameStrategy(msgFullyQlfName, s.SerdeType, info)
+	fmt.Println("protobuf.go - DeserializeRecordName - info.Subject: ", info.Subject)
+
+	msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
 
-	// add the topic to the subject
-	subject = fmt.Sprintf("%s-%s", topic, subject)
-	msg, err := s.MessageFactory(subject, msgFullyQlfName)
-	if err != nil {
-		return nil, err
-	}
 	var protoMsg proto.Message
 	switch t := msg.(type) {
 	case proto.Message:
@@ -597,7 +564,6 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 	}
 	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
 	return protoMsg, err
-
 }
 
 // DeserializeRecordName deserialize events register with the RecordNameStrategy
@@ -611,37 +577,37 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, err
 	}
 
-	fmt.Println("protobuf.go - DeserializeRecordName - info.Schema: ", info.Schema)
+	// fmt.Println("protobuf.go - DeserializeRecordName - info.Subject: ", info.Subject)
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
-	fmt.Println("protobuf.go - DeserializeRecordName - GetName: ", messageDesc.GetName())
+	// fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
+	// fmt.Println("protobuf.go - DeserializeRecordName - GetName: ", messageDesc.GetName())
 
-	subject, err := s.SubjectNameStrategy(msgFullyQlfName, s.SerdeType, info)
-	if err != nil {
-		return nil, err
-	}
-
-	// mytry .... only in case default MessageFactory ........
-
-	// case costumized MessageFactory, return the mqn as goMQN.Type
-	partsMsg := strings.Split(msgFullyQlfName, ".")
-	if partsMsg[0] == "goFullyQualifiedName" {
-		msgFullyQlfName = strings.TrimPrefix(msgFullyQlfName, "goFullyQualifiedName.")
-	}
-
-	//if msgFullyQlfName == "proto.Job" {
-	//	msgFullyQlfName = "Job"
+	// subject, err := s.SubjectNameStrategy(msgFullyQlfName, s.SerdeType, info)
+	// if err != nil {
+	// 	return nil, err
 	// }
-	// end ................................................
 
-	msg, err := s.MessageFactory(subject, msgFullyQlfName)
+	// fmt.Println("protobuf.go - DeserializeRecordName - subject: ", subject)
+
+	// // mytry .... only in case default MessageFactory ........
+
+	// // case costumized MessageFactory, return the mqn as goMQN.Type
+	// partsMsg := strings.Split(msgFullyQlfName, ".")
+	// if partsMsg[0] == "goFullyQualifiedName" {
+	// 	msgFullyQlfName = strings.TrimPrefix(msgFullyQlfName, "goFullyQualifiedName.")
+	// }
+
+	// //if msgFullyQlfName == "proto.Job" {
+	// //	msgFullyQlfName = "Job"
+	// // }
+	// // end ................................................
+
+	msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("2222222")
 
 	var protoMsg proto.Message
 	switch t := msg.(type) {
@@ -748,12 +714,13 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		return nil
 	}
 
-	bytesRead, messageDesc, _, err := s.setMessageDescriptor("", payload)
+	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
 	if err != nil {
 		return err
 	}
 
-	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
+	msgFullyQlfName := strings.TrimSuffix(info.Subject, "-value")
+	msgFullyQlfName = strings.TrimSuffix(msgFullyQlfName, "-key")
 	if msg, ok := subjects[msgFullyQlfName]; ok {
 		var protoMsg proto.Message
 		switch t := msg.(type) {
@@ -847,19 +814,18 @@ func toMessageDesc(descriptor desc.Descriptor, msgIndexes []int) (*desc.MessageD
 }
 
 func (s *Deserializer) protoMessageFactory(subject string, name string) (interface{}, error) {
-	// my add ...............
+	// // my add ...............
 
-	fmt.Println("protobuf.go - protoMessageFactory - see the name before: ", name)
-	// in case package has been added by gokfk-regent, remove it
-	partsMsg := strings.Split(subject, ".")
-	if partsMsg[0] == "goFullyQualifiedName" {
-		name = partsMsg[len(partsMsg)-1]
-		name = strings.TrimSuffix(name, "-value")
-		name = strings.TrimSuffix(name, "-key")
-	}
+	// fmt.Println("protobuf.go - protoMessageFactory - see the name before: ", name)
+	// // in case package has been added by gokfk-regent, remove it
+	// partsMsg := strings.Split(subject, ".")
+	// if partsMsg[0] == "goFullyQualifiedName" {
+	// 	name = partsMsg[len(partsMsg)-1]
+	// 	name = strings.TrimSuffix(name, "-value")
+	// 	name = strings.TrimSuffix(name, "-key")
+	// }
 
-	fmt.Println("protobuf.go - protoMessageFactory - see the name after: ", name)
-	// end ............
+	// // end ............
 
 	mt, err := s.ProtoRegistry.FindMessageByName(protoreflect.FullName(name))
 	if mt == nil {
@@ -868,6 +834,7 @@ func (s *Deserializer) protoMessageFactory(subject string, name string) (interfa
 	if err != nil {
 		return nil, err
 	}
+
 	msg := mt.New()
 	return msg.Interface(), nil
 }

@@ -40,6 +40,7 @@ import (
 const (
 	base              = ".."
 	schemas           = "/schemas/ids/%d"
+	getSubject        = "/schemas/ids/%d/subjects"
 	schemasBySubject  = "/schemas/ids/%d?subject=%s"
 	subject           = "/subjects"
 	subjects          = subject + "/%s"

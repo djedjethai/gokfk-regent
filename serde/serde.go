@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	// "log"
 
 	schemaregistry "github.com/djedjethai/gokfk-regent"
 )
@@ -174,7 +173,8 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 
 	if autoRegister {
 
-		// log.Println("serde.go - GetID - autoRegister: ", info)
+		// log.Println("serde.go - GetID - autoRegister-info: ", info)
+		// log.Println("serde.go - GetID - fullSubject: ", fullSubject)
 		id, err = s.Client.Register(fullSubject, info, normalizeSchema)
 		if err != nil {
 			return -1, err
