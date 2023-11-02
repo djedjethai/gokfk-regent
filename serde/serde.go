@@ -52,7 +52,7 @@ const magicByte byte = 0x0
 // For Avro, the name will be the name of the Avro type if it has one.
 // For JSON Schema, the name will be empty.
 // For Protobuf, the name will be the name of the message type.
-type MessageFactory func(subject string, name string) (interface{}, error)
+type MessageFactory func(subject []string, name string) (interface{}, error)
 
 // Serializer represents a serializer
 type Serializer interface {

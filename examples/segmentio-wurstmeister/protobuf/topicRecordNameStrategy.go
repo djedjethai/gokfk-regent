@@ -19,21 +19,24 @@ package main
 // )
 //
 // const (
-// 	producerMode              string = "producer"
-// 	consumerMode              string = "consumer"
-// 	nullOffset                       = -1
-// 	topic                            = "my-topic"
-// 	secondTopic                      = "my-second"
-// 	kafkaURL                         = "127.0.0.1:29092"
-// 	srURL                            = "http://127.0.0.1:8081"
-// 	schemaFile                string = "./api/v1/proto/Person.proto"
-// 	consumerGroupID                  = "test-consumer"
-// 	defaultSessionTimeout            = 6000
-// 	noTimeout                        = -1
-// 	topicSubjectPerson               = "my-topic-test.v1.Person"
-// 	topicSubjectAddress              = "my-topic-another.v1.Address"
-// 	secondTopicSubjectAddress        = "my-second-another.v1.Address"
-// 	groupID                          = "logger-group"
+// 	producerMode                   string = "producer"
+// 	consumerMode                   string = "consumer"
+// 	nullOffset                            = -1
+// 	topic                                 = "my-topic"
+// 	secondTopic                           = "my-second"
+// 	kafkaURL                              = "127.0.0.1:29092"
+// 	srURL                                 = "http://127.0.0.1:8081"
+// 	schemaFile                     string = "./api/v1/proto/Person.proto"
+// 	consumerGroupID                       = "test-consumer"
+// 	defaultSessionTimeout                 = 6000
+// 	noTimeout                             = -1
+// 	topicSubjectPerson                    = "my-topic-test.v1.Person"
+// 	topicSubjectPersonValue               = "my-topic-test.v1.Person-value"
+// 	topicSubjectAddress                   = "my-topic-another.v1.Address"
+// 	topicSubjectAddressValue              = "my-topic-another.v1.Address-value"
+// 	secondTopicSubjectAddress             = "my-second-another.v1.Address"
+// 	secondTopicSubjectAddressValue        = "my-second-another.v1.Address-value"
+// 	groupID                               = "logger-group"
 // )
 //
 // func main() {
@@ -259,17 +262,21 @@ package main
 //
 // // RegisterMessageFactory will overwrite the default one
 // // In this case &pb.Person{} is the "msg" at "msg, err := c.deserializer.DeserializeRecordName()"
-// func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
-// 	return func(subject string, name string) (interface{}, error) {
-// 		fmt.Println("The subject: ", subject) // topic-fullyQualifiedName-key/value
-// 		fmt.Println("The name: ", name)       // fullyQualifiedName
-// 		switch subject {
-// 		case fmt.Sprintf("%s-value", topicSubjectPerson):
-// 			return &pb.Person{}, nil
-// 		case fmt.Sprintf("%s-value", topicSubjectAddress):
-// 			return &pb.Address{}, nil
-// 		case fmt.Sprintf("%s-value", secondTopicSubjectAddress):
-// 			return &pb.Address{}, nil
+// func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
+// 	return func(subjects []string, name string) (interface{}, error) {
+// 		fmt.Println("The subject: ", subjects) // topic-fullyQualifiedName-key/value
+// 		fmt.Println("The name: ", name)        // fullyQualifiedName
+// 		for _, subject := range subjects {
+// 			switch subject {
+// 			case fmt.Sprintf("%s-value", topicSubjectPerson):
+// 				return &pb.Person{}, nil
+// 			case fmt.Sprintf("%s-value", topicSubjectAddress):
+// 				return &pb.Address{}, nil
+// 			case fmt.Sprintf("%s-value", secondTopicSubjectAddress):
+// 				return &pb.Address{}, nil
+// 			case "my-second-proto.Job-value":
+// 				return &pb.Job{}, nil
+// 			}
 // 		}
 // 		return nil, errors.New("No matching receiver")
 // 	}
@@ -282,16 +289,19 @@ package main
 // 		return err
 // 	}
 //
-// 	// // with RegisterMessageFactory()
-// 	// if _, ok := msg.(*pb.Person); ok {
-// 	// 	fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
-// 	// } else {
-//
-// 	// 	fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
-// 	// }
+// 	// with RegisterMessageFactory()
+// 	if _, ok := msg.(*pb.Person); ok {
+// 		fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
+// 	}
+// 	if _, ok := msg.(*pb.Address); ok {
+// 		fmt.Println("Address: ", msg.(*pb.Address).City, " - ", msg.(*pb.Address).Street)
+// 	}
+// 	if _, ok := msg.(*pb.Job); ok {
+// 		fmt.Println("Job: ", msg.(*pb.Job).Job, " - ", msg.(*pb.Job).Field)
+// 	}
 //
 // 	// without RegisterMessageFactory()
-// 	c.handleMessageAsInterface(msg, int64(m.Offset))
+// 	// c.handleMessageAsInterface(msg, int64(m.Offset))
 //
 // 	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
 //
@@ -305,12 +315,12 @@ package main
 // 		return err
 // 	}
 // 	if topic == "my-topic" {
-// 		fmt.Println("person my-topic: ", receiver[topicSubjectPerson].(*pb.Person).Name, " - ", receiver[topicSubjectPerson].(*pb.Person).Age)
-// 		fmt.Println("address my-topic: ", receiver[topicSubjectAddress].(*pb.Address).City, " - ", receiver[topicSubjectAddress].(*pb.Address).Street)
+// 		fmt.Println("person my-topic: ", receiver[topicSubjectPersonValue].(*pb.Person).Name, " - ", receiver[topicSubjectPersonValue].(*pb.Person).Age)
+// 		fmt.Println("address my-topic: ", receiver[topicSubjectAddressValue].(*pb.Address).City, " - ", receiver[topicSubjectAddressValue].(*pb.Address).Street)
 // 	}
 // 	if topic == "my-second" {
-// 		fmt.Println("address my-second: ", receiver[secondTopicSubjectAddress].(*pb.Address).City, " - ", receiver[secondTopicSubjectAddress].(*pb.Address).Street)
-// 		// fmt.Println("job my-second: ", receiver[""].(*pb.Address).City, " - ", receiver[secondTopicSubjectAddress].(*pb.Address).Street)
+// 		fmt.Println("address my-second: ", receiver[secondTopicSubjectAddressValue].(*pb.Address).City, " - ", receiver[secondTopicSubjectAddressValue].(*pb.Address).Street)
+// 		fmt.Println("job my-second: ", receiver["my-second-proto.Job-value"].(*pb.Job).Job, " - ", receiver["my-second-proto.Job-value"].(*pb.Job).Field)
 //
 // 	}
 // 	fmt.Printf("message at topic:%v partition:%v offset:%v	%s\n", m.Topic, m.Partition, m.Offset, string(m.Key))
@@ -331,11 +341,12 @@ package main
 //
 // 	// case of DeserializeIntoTopicRecordName
 // 	receiverTopic := make(map[string]interface{})
-// 	receiverTopic[topicSubjectPerson] = &pb.Person{}
-// 	receiverTopic[topicSubjectAddress] = &pb.Address{}
+// 	receiverTopic[topicSubjectPersonValue] = &pb.Person{}
+// 	receiverTopic[topicSubjectAddressValue] = &pb.Address{}
 //
 // 	receiverSecondTopic := make(map[string]interface{})
-// 	receiverSecondTopic[secondTopicSubjectAddress] = &pb.Address{}
+// 	receiverSecondTopic[secondTopicSubjectAddressValue] = &pb.Address{}
+// 	receiverSecondTopic["my-second-proto.Job-value"] = &pb.Job{}
 //
 // 	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
 //
@@ -346,8 +357,8 @@ package main
 // 			log.Fatalln(err)
 // 		}
 // 		if m.Topic == topic {
-// 			_ = c.consumeTopic(topic, m)
-// 			// _ = c.consumeTopicInto(topic, m, receiverTopic)
+// 			// _ = c.consumeTopic(topic, m)
+// 			_ = c.consumeTopicInto(topic, m, receiverTopic)
 // 		}
 //
 // 		mSecond, err := c.secondReader.ReadMessage(context.Background())
@@ -355,8 +366,8 @@ package main
 // 			log.Fatalln(err)
 // 		}
 // 		if mSecond.Topic == secondTopic {
-// 			_ = c.consumeTopic(secondTopic, mSecond)
-// 			// _ = c.consumeTopicInto(secondTopic, mSecond, receiverSecondTopic)
+// 			// _ = c.consumeTopic(secondTopic, mSecond)
+// 			_ = c.consumeTopicInto(secondTopic, mSecond, receiverSecondTopic)
 // 		}
 // 	}
 //

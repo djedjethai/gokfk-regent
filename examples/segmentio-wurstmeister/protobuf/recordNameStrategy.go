@@ -30,7 +30,9 @@ const (
 	defaultSessionTimeout        = 6000
 	noTimeout                    = -1
 	subjectPerson                = "test.v1.Person"
+	subjectPersonValue           = "test.v1.Person-value"
 	subjectAddress               = "another.v1.Address"
+	subjectAddressValue          = "another.v1.Address-value"
 	groupID                      = "logger-group"
 )
 
@@ -229,9 +231,9 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 
 // RegisterMessageFactory will overwrite the default one
 // In this case &pb.Person{} is the "msg" at "msg, err := c.deserializer.DeserializeRecordName()"
-func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
-	return func(subject string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subject)
+func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
+	return func(subjects []string, name string) (interface{}, error) {
+		fmt.Println("The subject: ", subjects)
 		fmt.Println("The name: ", name)
 		switch name {
 		case subjectPerson:
@@ -242,9 +244,11 @@ func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{},
 
 		// the protobuf package of Job is "Job"(as no package is specified),
 		// that is the "name". So the subject refer to the Go FullyQualifiedName
-		if subject == "proto.Job-value" {
-			return &pb.Job{}, nil
+		for _, subject := range subjects {
+			if subject == "proto.Job-value" {
+				return &pb.Job{}, nil
 
+			}
 		}
 		return nil, errors.New("No matching receiver")
 	}
@@ -264,11 +268,11 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string) 
 
 	// case of DeserializeIntoTopicRecordName
 	receiver := make(map[string]interface{})
-	receiver[subjectPerson] = &pb.Person{}
-	receiver[subjectAddress] = &pb.Address{}
-	receiver["proto.Job"] = &pb.Job{}
+	receiver[subjectPersonValue] = &pb.Person{}
+	receiver[subjectAddressValue] = &pb.Address{}
+	receiver["proto.Job-value"] = &pb.Job{}
 
-	// c.deserializer.MessageFactory = c.RegisterMessageFactory()
+	c.deserializer.MessageFactory = c.RegisterMessageFactory()
 
 	fmt.Println("start consuming ... !!")
 	for {
@@ -277,23 +281,23 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType, topic string) 
 			log.Fatalln(err)
 		}
 
-		// err = c.deserializer.DeserializeIntoRecordName(receiver, m.Value)
-		// if err != nil {
-		// 	return err
-		// }
-		// fmt.Println("person my-topic: ", receiver[subjectPerson].(*pb.Person).Name, " - ", receiver[subjectPerson].(*pb.Person).Age)
-		// fmt.Println("address my-topic: ", receiver[subjectAddress].(*pb.Address).City, " - ", receiver[subjectAddress].(*pb.Address).Street)
-		// fmt.Println("address my-second: ", receiver["proto.Job"].(*pb.Job).Job, " - ", receiver["proto.Job"].(*pb.Job).Field)
-
-		msg, err := c.deserializer.DeserializeRecordName(m.Value)
+		err = c.deserializer.DeserializeIntoRecordName(receiver, m.Value)
 		if err != nil {
 			return err
 		}
+		fmt.Println("person my-topic: ", receiver[subjectPersonValue].(*pb.Person).Name, " - ", receiver[subjectPersonValue].(*pb.Person).Age)
+		fmt.Println("address my-topic: ", receiver[subjectAddressValue].(*pb.Address).City, " - ", receiver[subjectAddressValue].(*pb.Address).Street)
+		fmt.Println("job my-topic: ", receiver["proto.Job-value"].(*pb.Job).Job, " - ", receiver["proto.Job-value"].(*pb.Job).Field)
+
+		// msg, err := c.deserializer.DeserializeRecordName(m.Value)
+		// if err != nil {
+		// 	return err
+		// }
 
 		// without RegisterMessageFactory()
-		c.handleMessageAsInterface(msg, int64(m.Offset))
+		// c.handleMessageAsInterface(msg, int64(m.Offset))
 
-		// with RegisterMessageFactory()
+		// // with RegisterMessageFactory()
 		// if _, ok := msg.(*pb.Person); ok {
 		// 	fmt.Println("Person: ", msg.(*pb.Person).Name, " - ", msg.(*pb.Person).Age)
 		// }

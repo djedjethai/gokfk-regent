@@ -520,7 +520,10 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
-	msg, err := s.MessageFactory(subject, messageDesc.GetFullyQualifiedName())
+
+	var subjects []string
+	subjects = append(subjects, subject)
+	msg, err := s.MessageFactory(subjects, messageDesc.GetFullyQualifiedName())
 	if err != nil {
 		return nil, err
 	}
@@ -548,19 +551,30 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
-	subject := info.Subject[0]
+	var subjects []string
 	if len(info.Subject) > 1 {
-		for _, v := range info.Subject {
-			if strings.HasPrefix(v, topic) {
-				subject = v
-				break
+		// if no protobufPackageName msgFulltQlfName will be Mystruct
+		// but in info.Subject, goPackage.Mystruct, only the user know which goPackage
+		partsMsg := strings.Split(msgFullyQlfName, ".")
+		if len(partsMsg) > 1 {
+			for _, v := range info.Subject {
+				if strings.HasPrefix(v, fmt.Sprintf("%s-%s", topic, msgFullyQlfName)) {
+					subjects = append(subjects, v)
+					break
+				}
 			}
+		} else {
+			// return all subjects
+			subjects = info.Subject
 		}
+	} else {
+		subjects = append(subjects, info.Subject[0])
 	}
-	fmt.Println("protobuf.go - DeserializeTopicRecordName - info.Subject: ", subject)
+
+	fmt.Println("protobuf.go - DeserializeTopicRecordName - subjects: ", subjects)
 
 	// msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
-	msg, err := s.MessageFactory(subject, msgFullyQlfName)
+	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
@@ -613,38 +627,29 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	// //	msgFullyQlfName = "Job"
 	// // }
 	// // end ................................................
-	subject := info.Subject[0]
+	var subjects []string
 	if len(info.Subject) > 1 {
 		partsMsg := strings.Split(msgFullyQlfName, ".")
-		for _, v := range info.Subject {
-			if len(partsMsg) > 1 {
+		if len(partsMsg) > 1 {
+			for _, v := range info.Subject {
 				if strings.HasPrefix(v, msgFullyQlfName) {
-					subject = v
+					subjects = append(subjects, v)
 					break
 				}
-			} else {
-				parts := strings.Split(v, "-")
-				if len(parts) >= 1 {
-					// [0] == proto-Job and I have Job
-					// NOTE it can have main-Job and internal-Job.... ??
-					// but I am in recordName so I do not really care...
-					// but if custom receiver then how to identify ???
-
-					topic := parts[0]
-					fmt.Println(topic)
-				}
 			}
+		} else {
+			subjects = info.Subject
 		}
-		// } else {
-		// 	// get the
-		// }
+	} else {
+
+		subjects = append(subjects, info.Subject[0])
 	}
 
-	fmt.Println("protobuf.go - DeserializeRecordName - info.Subject[0]: ", subject)
 	fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
+	fmt.Println("protobuf.go - DeserializeRecordName - subjects: ", subjects)
 
 	// TODO info.Subject[0] is it always 0 ????
-	msg, err := s.MessageFactory(subject, msgFullyQlfName)
+	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
@@ -719,14 +724,72 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 		return nil
 	}
 
-	bytesRead, messageDesc, _, err := s.setMessageDescriptor("", payload)
+	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
 	if err != nil {
 		return err
 	}
 
-	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
-	// add the topic
-	msgFullyQlfName = fmt.Sprintf("%s-%s", topic, msgFullyQlfName)
+	lenSubjects := len(info.Subject)
+	if lenSubjects > 1 {
+		for i, subject := range info.Subject {
+			err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
+			if err == nil {
+				return err
+			}
+
+			if lenSubjects == i+1 {
+				return fmt.Errorf("unfound subject declaration")
+			}
+
+		}
+	}
+
+	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
+
+	// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - msgFullyQlfName: ", msgFullyQlfName)
+	// // add the topic
+	// msgFullyQlfName = fmt.Sprintf("%s-%s", topic, msgFullyQlfName)
+	// totSubjects := len(info.Subject)
+	// if totSubjects > 1 {
+	// 	partsMsg := strings.Split(msgFullyQlfName, ".")
+	// 	// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - partsMsg: ", partsMsg)
+	// 	// len(partsMsg) == 1 means the protobuf have no packageName(Mystruct)
+	// 	if len(partsMsg) == 1 {
+	// 		for i, subject := range info.Subject {
+	// 			// topic-main.Job-value, topic-proto.Job-value
+	// 			// msgFullyQualifiedName: Job
+	// 			// pass any msgFullyQlfName which match the topic
+	// 			if strings.HasPrefix(subject, topic) {
+	// 				// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - subject: ", subject)
+	// 				err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
+	// 				if err == nil {
+	// 					return err
+	// 				}
+	// 			}
+	// 			if totSubjects == i+1 {
+	// 				return fmt.Errorf("unfound subject declaration")
+	// 			}
+	// 		}
+	// 	} else {
+	// 		for i, subject := range info.Subject {
+	// 			if strings.HasPrefix(subject, msgFullyQlfName) {
+	// 				err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
+	// 				if err == nil {
+	// 					return err
+	// 				}
+
+	// 			}
+	// 			if totSubjects == i+1 {
+	// 				return fmt.Errorf("unfound subject declaration")
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+}
+
+// func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
+func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjects map[string]interface{}, bytesRead int, msgFullyQlfName string) error {
 	if msg, ok := subjects[msgFullyQlfName]; ok {
 		var protoMsg proto.Message
 		switch t := msg.(type) {
@@ -745,7 +808,6 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 	} else {
 		return fmt.Errorf("unfound subject declaration")
 	}
-
 }
 
 // DeserializeIntoRecordName deserialize bytes with recordNameStrategy to some given objects
@@ -759,27 +821,22 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		return err
 	}
 
-	// TODO info.Subject[] is it always [0] ???
-	msgFullyQlfName := strings.TrimSuffix(info.Subject[0], "-value")
-	msgFullyQlfName = strings.TrimSuffix(msgFullyQlfName, "-key")
-	if msg, ok := subjects[msgFullyQlfName]; ok {
-		var protoMsg proto.Message
-		switch t := msg.(type) {
-		case proto.Message:
-			protoMsg = t
-		default:
-			return fmt.Errorf("deserialization target must be a protobuf message")
-		}
+	lenSubjects := len(info.Subject)
+	if lenSubjects > 1 {
+		for i, subject := range info.Subject {
+			err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
+			if err == nil {
+				return err
+			}
 
-		protoInfo := reflect.TypeOf(protoMsg).Elem()
-		if protoInfo.Name() != messageDesc.GetName() {
-			return fmt.Errorf("recipient proto object differs from incoming events")
-		}
+			if lenSubjects == i+1 {
+				return fmt.Errorf("unfound subject declaration")
+			}
 
-		return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
-	} else {
-		return fmt.Errorf("unfound subject declaration")
+		}
 	}
+
+	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
 }
 
 func (s *Deserializer) toFileDesc(info schemaregistry.SchemaInfo) (*desc.FileDescriptor, error) {
@@ -854,7 +911,7 @@ func toMessageDesc(descriptor desc.Descriptor, msgIndexes []int) (*desc.MessageD
 	}
 }
 
-func (s *Deserializer) protoMessageFactory(subject string, name string) (interface{}, error) {
+func (s *Deserializer) protoMessageFactory(subject []string, name string) (interface{}, error) {
 	// // my add ...............
 
 	// fmt.Println("protobuf.go - protoMessageFactory - see the name before: ", name)
