@@ -319,7 +319,8 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, "")
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, "")
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +410,8 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +525,7 @@ func toJSONSchema(c schemaregistry.Client, schema schemaregistry.SchemaInfo) (*j
 	return compiler.Compile(url)
 }
 
-func (s *Deserializer) jsonMessageFactory(subject string, name string) (interface{}, error) {
+func (s *Deserializer) jsonMessageFactory(subject []string, name string) (interface{}, error) {
 	var msg map[string]interface{}
 	return &msg, nil
 }
