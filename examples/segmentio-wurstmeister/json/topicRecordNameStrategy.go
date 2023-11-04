@@ -77,7 +77,7 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(addr, topic, "main.Person")
+		err = producer.ProduceMessage(addr, topic, "main.Address")
 		// err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
 		if err != nil {
 			log.Println("Error producing Message: ", err)
@@ -335,6 +335,9 @@ func (c *srConsumer) Run() error {
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		// fmt.Println("message received: ", m)
+
 		if m.Topic == topic {
 			_ = c.consumeTopic(topic, m)
 			// _ = c.consumeTopicInto(topic, m, ref)

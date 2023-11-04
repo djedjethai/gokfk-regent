@@ -218,6 +218,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 
 	// add topic to the fullyQualifiedName
 	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
+	fmt.Println("JSON - SerializeTopicRecordName - msgFQN: ", msgFQN)
 
 	if len(subject) > 0 {
 		if msgFQN != subject[0] {
@@ -332,36 +333,36 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	return msg, nil
 }
 
-func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (string, error) {
-	var fieldNameBytes []byte
-	var fieldValueBytes []byte
-	fieldNameLen := 0
-	readingFieldName := true
-
-	for _, b := range bytes {
-		if readingFieldName {
-			if fieldNameLen == 0 {
-				// The first byte of the field name indicates its length
-				fieldNameLen = int(b)
-			} else {
-				// Accumulate bytes for the field name
-				fieldNameBytes = append(fieldNameBytes, b)
-				if len(fieldNameBytes) == fieldNameLen {
-					readingFieldName = false
-				}
-			}
-		} else {
-			// Accumulate bytes for the field value
-			fieldValueBytes = append(fieldValueBytes, b)
-		}
-	}
-
-	if fieldName != string(fieldNameBytes) {
-		return "", fmt.Errorf("field not found: %s", fieldName)
-	}
-
-	return string(fieldValueBytes), nil
-}
+// func (s *Deserializer) deserializeStringField(bytes []byte, fieldName string) (string, error) {
+// 	var fieldNameBytes []byte
+// 	var fieldValueBytes []byte
+// 	fieldNameLen := 0
+// 	readingFieldName := true
+//
+// 	for _, b := range bytes {
+// 		if readingFieldName {
+// 			if fieldNameLen == 0 {
+// 				// The first byte of the field name indicates its length
+// 				fieldNameLen = int(b)
+// 			} else {
+// 				// Accumulate bytes for the field name
+// 				fieldNameBytes = append(fieldNameBytes, b)
+// 				if len(fieldNameBytes) == fieldNameLen {
+// 					readingFieldName = false
+// 				}
+// 			}
+// 		} else {
+// 			// Accumulate bytes for the field value
+// 			fieldValueBytes = append(fieldValueBytes, b)
+// 		}
+// 	}
+//
+// 	if fieldName != string(fieldNameBytes) {
+// 		return "", fmt.Errorf("field not found: %s", fieldName)
+// 	}
+//
+// 	return string(fieldValueBytes), nil
+// }
 
 // DeserializeTopicRecordName deserialise bytes
 func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
@@ -387,6 +388,8 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+
+	// fmt.Println("JSON - DeserializeTopicRecordName - msgFQN: ", fullyQualifiedName)
 
 	if s.validate {
 		// Need to unmarshal to pure interface

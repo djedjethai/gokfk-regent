@@ -256,7 +256,8 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +319,8 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -390,9 +392,7 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 	if err != nil {
 		return nil, err
 	}
-
 	// fmt.Println("avro_generic.go - Deserialize - info: ", info)
-
 	writer, name, err := s.toType(info)
 	if err != nil {
 		return nil, err
@@ -401,7 +401,8 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 	if err != nil {
 		return nil, err
 	}
-	msg, err := s.MessageFactory(subject, name)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, name)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +442,7 @@ func (s *GenericDeserializer) toAvroType(schema schemaregistry.SchemaInfo) (sche
 	return resolveAvroReferences(s.Client, schema, ns)
 }
 
-func (s *GenericDeserializer) avroMessageFactory(subject string, name string) (interface{}, error) {
+func (s *GenericDeserializer) avroMessageFactory(subject []string, name string) (interface{}, error) {
 
 	return struct{}{}, nil
 }
