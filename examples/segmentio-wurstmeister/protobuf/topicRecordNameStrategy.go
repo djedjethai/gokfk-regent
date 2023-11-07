@@ -347,7 +347,7 @@ func (c *srConsumer) getResponseIntoTopicRecordName(ctx context.Context, res cha
 			res <- err
 		}
 
-		err = c.deserializer.DeserializeIntoTopicRecordName(topic, receiver, m.Value)
+		err = c.deserializer.DeserializeIntoTopicRecordName(m.Topic, receiver, m.Value)
 		if err != nil {
 			res <- err
 		}
@@ -370,7 +370,7 @@ func (c *srConsumer) getResponseTopicRecordName(ctx context.Context, res chan in
 			res <- err
 		}
 
-		msg, err := c.deserializer.DeserializeTopicRecordName(topic, m.Value)
+		msg, err := c.deserializer.DeserializeTopicRecordName(m.Topic, m.Value)
 		if err != nil {
 			res <- err
 		}

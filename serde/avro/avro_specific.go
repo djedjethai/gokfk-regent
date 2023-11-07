@@ -289,7 +289,8 @@ func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload 
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +373,8 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 		return nil, err
 	}
 
-	msg, err := s.MessageFactory(subject, fullyQualifiedName)
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +490,9 @@ func (s *SpecificDeserializer) Deserialize(topic string, payload []byte) (interf
 	if err != nil {
 		return nil, err
 	}
-	msg, err := s.MessageFactory(subject, writer.Name())
+
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, writer.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -552,6 +556,6 @@ func (s *SpecificDeserializer) toAvroType(schema schemaregistry.SchemaInfo) (sch
 	return resolveAvroReferences(s.Client, schema, ns)
 }
 
-func (s *SpecificDeserializer) avroMessageFactory(subject string, name string) (interface{}, error) {
+func (s *SpecificDeserializer) avroMessageFactory(subject []string, name string) (interface{}, error) {
 	return struct{}{}, nil
 }
