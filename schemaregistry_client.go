@@ -337,7 +337,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 
 		err = c.restService.handleRequest(newRequest("POST", versionNormalize, &metadata, url.PathEscape(subject), normalize), &metadata)
 		if err == nil {
-			log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
+			// log.Println("schemaregistry_client.go - Register - metadataID: ", metadata.ID)
 			c.schemaToIdCache.Put(cacheKey, metadata.ID)
 
 			// save the subject matching the ID
@@ -369,7 +369,6 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 
 	if ok {
 		// log.Println("schemaregistry_client.go - GetByID - OK cache: ", *subjIDPayload.(*SchemaInfo))
-
 		return *subjIDPayload.(*SchemaInfo), nil
 	}
 
@@ -393,7 +392,6 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 			var response []string
 			err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
 			if err == nil {
-				fmt.Println("See the metadata from urrrll-------------------------------: ", response)
 				newInfo.Subject = response
 			} else {
 				return *newInfo, fmt.Errorf("Invalid server error")
@@ -409,6 +407,8 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 
 		// newInfo = subjIDPayload.(subjectOnlyIDPayload).SchemaInfo
 		newInfo = subjIDPayload.(*SchemaInfo)
+
+		fmt.Println("See the schemaInfo from cache ********** : ", newInfo)
 	}
 
 	// log.Println("schemaregistry_client.go - GetBySubjectAndID - retrurn newInfo: ", *newInfo)

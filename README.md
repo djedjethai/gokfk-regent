@@ -33,21 +33,14 @@ go test -v -cover ./...
 * Topic-Name-Strategy interface(no breaking change with the mother repo, confluent-kafka-go/schemaregistry)
 ```
 Serialize(topic string, msg interface{}) ([]byte, error)
-
-// Deserialize will call the default MessageFactory to create an object
 Deserialize(topic string, payload []byte) (interface{}, error)
-// DeserializeInto will unmarshal data into the given msg object.
 DeserializeInto(topic string, payload []byte, msg interface{}) error
 ```
 
 * Record-Name-Strategy interface
 ```
-// The optional subject assert the msg fullyQualifiedClassName with the expected subject
 SerializeRecordName(msg interface{}, subject ...string) ([]byte, error)
-
-// DeserializeRecordName will call the default MessageFactory to create an object
 DeserializeRecordName(payload []byte) (interface{}, error)
-// DeserializeIntoRecordName will unmarshal data into the given subjects' value(object).
 DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
 ```
 
@@ -151,7 +144,6 @@ if err != nil {
 	return nil, err
 }
 
-
 // write Person to topic, fullyQualifiedName is optional 
 // payload, err := s.SerializeTopicRecordName(secondTopic, msg) // gokfk-regent will set the topic
 payload, err := s.SerializeTopicRecordName(secondTopic, msg, "secondTopic-personPackage.Person")
@@ -199,6 +191,9 @@ d, err := protobuf.NewDeserializer(sr, serde.ValueSerde, protobuf.NewDeserialize
 if err != nil {
 	return nil, err
 }
+
+jobType := (&pb.Job{}).ProtoReflect().Type()
+d.ProtoRegistry.RegisterMessage(jobType)
 
 topicMsg, err := rTopic.ReadMessage(context.Background())
 if err != nil {

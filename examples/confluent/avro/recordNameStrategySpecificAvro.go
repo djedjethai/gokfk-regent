@@ -58,6 +58,11 @@ func producer() {
 		City:   "Rennes",
 	}
 
+	job := &avSch.Job{
+		Job:   "doctor",
+		Field: "medicin",
+	}
+
 	for {
 		offset, err := producer.ProduceMessage(msg, topic, "personrecord.Person")
 		if err != nil {
@@ -65,6 +70,13 @@ func producer() {
 		}
 
 		offset, err = producer.ProduceMessage(addr, topic, "addressrecord.Address")
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
+
+		// job schema have no namespace, so gokfk-regent will use the Go fullyQualifiedName
+		// schemas.Job
+		offset, err = producer.ProduceMessage(job, topic, "schemas.Job")
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -195,8 +207,10 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 }
 
 // RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
-func (c *srConsumer) RegisterMessageFactory() func(string, string) (interface{}, error) {
-	return func(subject string, name string) (interface{}, error) {
+func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		fmt.Println("the subject: ", subject)
+		fmt.Println("the name: ", name)
 		switch name {
 		case "personrecord.Person":
 			return &avSch.Person{}, nil

@@ -170,6 +170,8 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	messageDescriptor := protoMsg.ProtoReflect().Descriptor()
 
 	fullName := string(messageDescriptor.FullName())
+
+	// if protobuf does not define a package name, add the Go fullyQualifiedName.......
 	partsMsg := strings.Split(fullName, ".")
 	if len(partsMsg) < 2 {
 		msgFQNGo := reflect.TypeOf(msg).String()
@@ -242,13 +244,11 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 	fullName := string(messageDescriptor.FullName())
 
 	// if protobuf does not define a package name, add the Go fullyQualifiedName.......
-	// var gopackagename = ""
 	partsMsg := strings.Split(fullName, ".")
 	if len(partsMsg) < 2 {
 		msgFQNGo := reflect.TypeOf(msg).String()
 		fullName = strings.TrimLeft(msgFQNGo, "*")
 	}
-	// end tryyyy...................................
 
 	if len(subject) > 0 {
 		if fullName != subject[0] {
@@ -274,21 +274,6 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		References: metadata.References,
 	}
 	// info.Subject = fullName
-
-	// // my try...............................................
-	// fmt.Println("see the mssggg: ", protoMsg)
-	// fmt.Println("see the fullName: ", fullName)
-	// fmt.Println("see the reflect msg: ", reflect.TypeOf(msg).String())
-	// if gopackagename != "" {
-	// 	fmt.Println("aaaaaaaaadddddddddddddddddddddddddddddd")
-	// 	// packageToAdd := "package goFullyQualifiedName.proto;"
-	// 	// TODO set "package goFullyQualifiedName" as a const
-	// 	packageToAdd := fmt.Sprintf("package goFullyQualifiedName.%s;", gopackagename)
-	// 	info.Schema = insertPackage(info.Schema, packageToAdd)
-	// }
-	// fmt.Println("see the info schema affter....: ", info.Schema)
-
-	// // end my try................................
 
 	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
 	// NOTE pass into mock - Register between that
@@ -790,6 +775,9 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 
 // func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
 func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjects map[string]interface{}, bytesRead int, msgFullyQlfName string) error {
+
+	fmt.Println("in deserializeInto serde/protobuf/protobuf.go..... ")
+
 	if msg, ok := subjects[msgFullyQlfName]; ok {
 		var protoMsg proto.Message
 		switch t := msg.(type) {

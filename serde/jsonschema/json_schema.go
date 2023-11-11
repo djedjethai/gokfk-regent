@@ -137,6 +137,7 @@ func (s *Serializer) addFullyQualifiedNameToSchema(jsonBytes []byte, msgFQN stri
 		data["name"] = name
 		data["namespace"] = namespace
 	}
+
 	return json.Marshal(data)
 }
 
@@ -218,7 +219,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 
 	// add topic to the fullyQualifiedName
 	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
-	fmt.Println("JSON - SerializeTopicRecordName - msgFQN: ", msgFQN)
+	// fmt.Println("JSON - SerializeTopicRecordName - msgFQN: ", msgFQN)
 
 	if len(subject) > 0 {
 		if msgFQN != subject[0] {

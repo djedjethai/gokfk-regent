@@ -2,7 +2,7 @@ module avroexample
 
 go 1.21.0
 
-replace github.com/djedjethai/gokfk-regent => ../..
+replace github.com/djedjethai/gokfk-regent => ../../..
 
 require (
 	github.com/actgardner/gogen-avro/v10 v10.2.1

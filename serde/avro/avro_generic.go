@@ -80,6 +80,7 @@ func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string
 		}
 		data["namespace"] = namespace
 	}
+
 	return json.Marshal(data)
 }
 
