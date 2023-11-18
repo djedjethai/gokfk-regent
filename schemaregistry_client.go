@@ -22,7 +22,7 @@ package schemaregistry
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	// "log"
 	"net/url"
 	"strings"
 	"sync"
@@ -407,8 +407,6 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 
 		// newInfo = subjIDPayload.(subjectOnlyIDPayload).SchemaInfo
 		newInfo = subjIDPayload.(*SchemaInfo)
-
-		fmt.Println("See the schemaInfo from cache ********** : ", newInfo)
 	}
 
 	// log.Println("schemaregistry_client.go - GetBySubjectAndID - retrurn newInfo: ", *newInfo)

@@ -75,6 +75,13 @@ var _ Client = new(mockclient)
 
 // Register registers Schema aliased with subject
 func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
+
+	// add the subject to schema info in case of GetByID it does
+	// in case GetBySubjectAndID it does not but it does not matter
+	// NOTE as I added that the keys of all storage got modified,
+	// be careful in other method refering to them
+	schema.Subject = append(schema.Subject, subject)
+
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
 		return -1, err
@@ -170,6 +177,10 @@ func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema 
 
 func (c *mockclient) getIDFromRegistry(subject string, schema SchemaInfo) (int, error) {
 	var id = -1
+
+	// fmt.Println("mock - getIDFromRegistry - subject: ", subject)
+	// fmt.Println("mock - getIDFromRegistry - c.idToSchemaCache: ", c.idToSchemaCache)
+
 	c.idToSchemaCacheLock.RLock()
 	for key, value := range c.idToSchemaCache {
 		if key.subject == subject && schemasEqual(*value, schema) {
@@ -182,16 +193,19 @@ func (c *mockclient) getIDFromRegistry(subject string, schema SchemaInfo) (int, 
 	if err != nil {
 		return -1, err
 	}
+
 	if id < 0 {
 		id = c.counter.increment()
 		idCacheKey := subjectID{
 			subject: subject,
 			id:      id,
 		}
+
 		c.idToSchemaCacheLock.Lock()
 		c.idToSchemaCache[idCacheKey] = &schema
 		c.idToSchemaCacheLock.Unlock()
 	}
+
 	return id, nil
 }
 
@@ -264,10 +278,14 @@ func (c *mockclient) GetBySubjectAndID(subject string, id int) (schema SchemaInf
 
 // GetID checks if a schema has been registered with the subject. Returns ID if the registration can be found
 func (c *mockclient) GetID(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
+	// NOTE added as well
+	schema.Subject = append(schema.Subject, subject)
+
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
 		return -1, err
 	}
+
 	cacheKey := subjectJSON{
 		subject: subject,
 		json:    string(schemaJSON),
@@ -412,10 +430,14 @@ func (c *mockclient) deleteID(key subjectJSON, id int, permanent bool) {
 // GetVersion finds the Subject SchemaMetadata associated with the provided schema
 // Returns integer SchemaMetadata number
 func (c *mockclient) GetVersion(subject string, schema SchemaInfo, normalize bool) (int, error) {
+	// NOTE added ......
+	schema.Subject = append(schema.Subject, subject)
+
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
 		return -1, err
 	}
+
 	cacheKey := subjectJSON{
 		subject: subject,
 		json:    string(schemaJSON),

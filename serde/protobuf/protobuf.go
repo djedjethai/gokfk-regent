@@ -204,7 +204,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		References: metadata.References,
 	}
 
-	fmt.Println("In protobuf.go - SerializeTopicRecordName - fullName: ", fullName)
 	// info.Subject = fullName
 
 	id, err := s.GetID(fullName, protoMsg, info)
@@ -315,10 +314,12 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	metadata, err := s.resolveDependencies(fileDesc, deps, "", autoRegister, normalize)
 	if err != nil {
 		return nil, err
 	}
+
 	info := schemaregistry.SchemaInfo{
 		Schema:     metadata.Schema,
 		SchemaType: metadata.SchemaType,
@@ -556,7 +557,7 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		subjects = append(subjects, info.Subject[0])
 	}
 
-	fmt.Println("protobuf.go - DeserializeTopicRecordName - subjects: ", subjects)
+	// fmt.Println("protobuf.go - DeserializeTopicRecordName - subjects: ", subjects)
 
 	// msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
@@ -612,6 +613,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	// //	msgFullyQlfName = "Job"
 	// // }
 	// // end ................................................
+
 	var subjects []string
 	if len(info.Subject) > 1 {
 		partsMsg := strings.Split(msgFullyQlfName, ".")
@@ -630,10 +632,6 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		subjects = append(subjects, info.Subject[0])
 	}
 
-	fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
-	fmt.Println("protobuf.go - DeserializeRecordName - subjects: ", subjects)
-
-	// TODO info.Subject[0] is it always 0 ????
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
 	if err != nil {
 		return nil, err
