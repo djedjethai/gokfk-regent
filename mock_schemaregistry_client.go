@@ -115,9 +115,16 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 			}
 		}
 	}
+
+	fmt.Println("mock - Register - fullQualifName: ", fullQualifName)
+
 	if parts[0] == "jsonschema" ||
 		fullQualifName == "avro" ||
 		fullQualifName == "recordname" ||
+		fullQualifName == "topic-recordname" ||
+		fullQualifName == "topic-protorecordname" ||
+		fullQualifName == "second-recordname" ||
+		fullQualifName == "second-protorecordname" ||
 		fullQualifName == "python.test.advanced" {
 
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)

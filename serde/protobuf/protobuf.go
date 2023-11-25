@@ -530,8 +530,11 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		return nil, nil
 	}
 
+	// fmt.Println("protobuf.go - DeserializeTopicRecordName - access")
+
 	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
 	if err != nil {
+		fmt.Println("protobuf.go - DeserializeTopicRecordName - err: ", err)
 		return nil, err
 	}
 

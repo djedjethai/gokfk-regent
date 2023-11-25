@@ -29,6 +29,7 @@ import (
 	"github.com/djedjethai/gokfk-regent/serde"
 	"github.com/djedjethai/gokfk-regent/test"
 	"github.com/djedjethai/gokfk-regent/test/proto/recordname"
+	trn "github.com/djedjethai/gokfk-regent/test/proto/topicrecordname"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -228,7 +229,7 @@ func TestProtobufSerdeDeserializeInto(t *testing.T) {
 	serde.MaybeFail("deserializeRecordNameValidSchema", serde.Expect(err.Error(), "recipient proto object differs from incoming events"))
 }
 
-// --------------------------------------------------------
+// -------------------- RecordName ------------------------------------
 
 const (
 	linkedList      = "recordname.LinkedList"
@@ -539,7 +540,35 @@ func TestProtobufSerdeSubjectMismatchPayload(t *testing.T) {
 	serde.MaybeFail("serialization", serde.Expect(err.Error(), "the payload's fullyQualifiedName: 'recordname.Pizza' does not match the subject: 'test.Pizza'"))
 }
 
+// ----------------------- TopicRecordName ---------------------------
+
 // TODO inplement tests for topicRecordNameStrategy....
+const (
+	topic                         = "topic"
+	second                        = "second"
+	topicLinkedList               = "topic-recordname.LinkedList"
+	topicLinkedListValue          = "topic-recordname.LinkedList-value"
+	secondLinkedList              = "second-recordname.LinkedList"
+	secondLinkedListValue         = "second-recordname.LinkedList-value"
+	topicPizza                    = "topic-recordname.Pizza"
+	topicPizzaValue               = "topic-recordname.Pizza-value"
+	secondPizza                   = "second-recordname.Pizza"
+	secondPizzaValue              = "second-recordname.Pizza-value"
+	topicLinkedListNopackage      = "topic-LinkedList"
+	topicLinkedListNopackageValue = "topic-LinkedList-value"
+)
+
+var (
+	topLinked = trn.LinkedList{
+		Value: 100,
+	}
+
+	topPiz = trn.Pizza{
+		Size:     "Extra extra large",
+		Toppings: []string{"anchovies", "mushrooms"},
+	}
+)
+
 func TestProtobufSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
@@ -551,28 +580,68 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	bytesInner, err := ser.SerializeRecordName(&recLinked, linkedList)
+	bytesInner, err := ser.SerializeTopicRecordName(topic, &recLinked, topicLinkedList)
 	serde.MaybeFail("serialization", err)
 
-	bytesObj, err := ser.SerializeRecordName(&recPiz)
+	bytesInner2, err := ser.SerializeTopicRecordName(second, &recLinked, secondLinkedList)
+	serde.MaybeFail("serialization", err)
+
+	bytesObj, err := ser.SerializeTopicRecordName(topic, &recPiz, topicPizza)
 	serde.MaybeFail("serialization", err)
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
 
 	serde.MaybeFail("Deserializer configuration", err)
 	deser.Client = ser.Client
-	deser.MessageFactory = RegisterMessageFactory()
+	// deser.MessageFactory = RegisterMessageFactory()
 
 	deser.ProtoRegistry.RegisterMessage(recLinked.ProtoReflect().Type())
 	deser.ProtoRegistry.RegisterMessage(recPiz.ProtoReflect().Type())
 
-	newobj, err := deser.DeserializeRecordName(bytesInner)
+	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
+	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
-	newobj, err = deser.DeserializeRecordName(bytesObj)
+	// wrong topic, works anyway
+	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
+
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[0], recPiz.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[1], recPiz.Toppings[1]))
+}
+
+// Protobuf have no packageName, gokfk-regent will get the goPackageName: protorecordname
+func TestProtobufSerdeDeserializeTopicRecordNameWithHandlerAndNoPackagename(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeTopicRecordName(topic, &topLinked, "topic-protorecordname.LinkedList")
+	serde.MaybeFail("serialization", err)
+
+	bytesInner2, err := ser.SerializeTopicRecordName(second, &topLinked, "second-protorecordname.LinkedList")
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+
+	deser.ProtoRegistry.RegisterMessage(topLinked.ProtoReflect().Type())
+
+	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*trn.LinkedList).Value, topLinked.Value))
+	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*trn.LinkedList).Value, topLinked.Value))
 }
 
 // func TestProtobufSerdeDeserializeRecordNameWithHandlerNoReceiver(t *testing.T) {
