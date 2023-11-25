@@ -774,8 +774,6 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 // func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
 func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjects map[string]interface{}, bytesRead int, msgFullyQlfName string) error {
 
-	fmt.Println("in deserializeInto serde/protobuf/protobuf.go..... ")
-
 	if msg, ok := subjects[msgFullyQlfName]; ok {
 		var protoMsg proto.Message
 		switch t := msg.(type) {
