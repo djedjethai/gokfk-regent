@@ -14,7 +14,7 @@ As an agile open-source project, we prioritize flexibility, allowing for rapid d
 ## Implemented
 * TopicNameStrategy for ProtoBuf, JsonSchema, Avro(from the parent project, Confluent-kafka-go)
 * RecordNameStrategy for Protobuf, JsonSchema, Avro  
-* TopicRecordNameStrategy for Protobuf, JsonSchema, Avro (no test yet) 
+* TopicRecordNameStrategy for Protobuf, JsonSchema, Avro 
 
 ## Install
 ``` bash
@@ -23,11 +23,11 @@ $ go get github.com/djedjethai/gokfk-regent
 
 ## Testing
 ```
-go test -v -cover ./...
+go test -v -cover ./...     // 73%
 ```
 
 ## Features
-* Topic-Name-Strategy interface(no breaking change with the mother repo, confluent-kafka-go/schemaregistry)
+* Topic-Name-Strategy interface(breaking change with the mother repo if register MessageFactory())
 ```
 Serialize(topic string, msg interface{}) ([]byte, error)
 Deserialize(topic string, payload []byte) (interface{}, error)
@@ -44,17 +44,17 @@ DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error
 * Topic-Record-Name-Strategy interface
 ```
 SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error)
-
 DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error)
 DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error
 ```
 
-* In the case of Deserialize() and DeserializeRecordName(), the default MessageFactory() handler can be overridden.
+* The default MessageFactory() handler can be overridden.
 ```
 deserializer.MessageFactory = RegisterMessageFactory()
 
-func RegisterMessageFactory() func(string, string) (interface{}, error) {
-	return func(subject string, name string) (interface{}, error) {
+// confluent-kafka-go/schemaregistry MessageFactory signature: is func(string, string) (interface{}, error) 
+func RegisterMessageFactory() func([]string, string) (interface{}, error) {
+	return func(subjects []string, name string) (interface{}, error) {
 		switch name {
 		case subjectPerson:
 			return &pb.Person{}, nil
