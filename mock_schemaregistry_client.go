@@ -122,12 +122,16 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		fullQualifName == "avro" ||
 		fullQualifName == "recordname" ||
 		fullQualifName == "topic-recordname" ||
-		fullQualifName == "topic-protorecordname" ||
 		fullQualifName == "second-recordname" ||
+		fullQualifName == "topic-protorecordname" ||
 		fullQualifName == "second-protorecordname" ||
 		fullQualifName == "topic-jsonschema" ||
 		fullQualifName == "second-jsonschema" ||
-		fullQualifName == "python.test.advanced" {
+		fullQualifName == "topic-avro" ||
+		fullQualifName == "second-avro" ||
+		fullQualifName == "python.test.advanced" ||
+		fullQualifName == "topic-python.test.advanced" ||
+		fullQualifName == "second-python.test.advanced" {
 
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 		id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)

@@ -16,9 +16,6 @@ As an agile open-source project, we prioritize flexibility, allowing for rapid d
 * RecordNameStrategy for Protobuf, JsonSchema, Avro  
 * TopicRecordNameStrategy for Protobuf, JsonSchema, Avro (no test yet) 
 
-## Working on
-* Adding tests
-
 ## Install
 ``` bash
 $ go get github.com/djedjethai/gokfk-regent

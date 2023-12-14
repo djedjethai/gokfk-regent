@@ -471,7 +471,7 @@ func RegisterTRNMessageFactoryInvalidReceiver() func([]string, string) (interfac
 	}
 }
 
-func TestProtobufSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
+func TestJSONSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 	serde.MaybeFail = serde.InitFailFunc(t)
 	var err error
 	conf := schemaregistry.NewConfig("mock://")

@@ -288,7 +288,6 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 
 	_, err = avro.Unmarshal(payload[5:], msg, writer)
 	return msg, err
-
 }
 
 func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
