@@ -1,14 +1,11 @@
 package main
 
 import (
-	// "errors"
-	// "bytes"
 	"fmt"
 	"os"
 	"strings"
 
 	avSch "avroexample/schemas"
-	// "github.com/actgardner/gogen-avro/v10/compiler"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	schemaregistry "github.com/djedjethai/gokfk-regent"
 	"github.com/djedjethai/gokfk-regent/serde"

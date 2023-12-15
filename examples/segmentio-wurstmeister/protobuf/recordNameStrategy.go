@@ -82,8 +82,6 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		// as subjectAddress is an invalid subject,
-		// gokfk-regent will log it and report the real job's subject
 		err = producer.ProduceMessage(job, topic, "proto.Job")
 		if err != nil {
 			log.Println("Error producing Message: ", err)

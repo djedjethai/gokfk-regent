@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	// "reflect"
 	"strings"
 
 	avSch "avroexample/schemas"

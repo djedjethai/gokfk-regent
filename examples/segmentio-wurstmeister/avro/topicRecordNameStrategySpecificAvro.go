@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	// "reflect"
 	"strings"
 
 	avSch "avroexample/schemas"
