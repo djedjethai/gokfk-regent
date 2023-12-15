@@ -23,7 +23,7 @@ $ go get github.com/djedjethai/gokfk-regent
 
 ## Testing
 ```
-go test -v -cover ./...     // 73%
+go test -v -cover ./... 
 ```
 
 ## Features

@@ -186,8 +186,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		}
 	}
 
-	// fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
-
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
 	fileDesc, deps, err := s.toProtobufSchema(protoMsg)
@@ -203,8 +201,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		SchemaType: metadata.SchemaType,
 		References: metadata.References,
 	}
-
-	// info.Subject = fullName
 
 	id, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
@@ -255,8 +251,6 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		}
 	}
 
-	// fmt.Println("protobuf.go - serialize - see yhe fullName/subject: ", fullName)
-
 	autoRegister := s.Conf.AutoRegisterSchemas
 	normalize := s.Conf.NormalizeSchemas
 	fileDesc, deps, err := s.toProtobufSchema(protoMsg)
@@ -272,10 +266,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		SchemaType: metadata.SchemaType,
 		References: metadata.References,
 	}
-	// info.Subject = fullName
 
-	// fmt.Println("In protobuf.go - Serializer - before get the id - info: ", info)
-	// NOTE pass into mock - Register between that
 	id, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
 		return nil, err
@@ -530,8 +521,6 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		return nil, nil
 	}
 
-	// fmt.Println("protobuf.go - DeserializeTopicRecordName - access")
-
 	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
 	if err != nil {
 		fmt.Println("protobuf.go - DeserializeTopicRecordName - err: ", err)
@@ -560,9 +549,6 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		subjects = append(subjects, info.Subject[0])
 	}
 
-	// fmt.Println("protobuf.go - DeserializeTopicRecordName - subjects: ", subjects)
-
-	// msg, err := s.MessageFactory(info.Subject, msgFullyQlfName)
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
 	if err != nil {
 		return nil, err
@@ -590,32 +576,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, err
 	}
 
-	// fmt.Println("protobuf.go - DeserializeRecordName - info.Subject: ", info.Subject)
-
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
-
-	// fmt.Println("protobuf.go - DeserializeRecordName - msgFullyQlfName: ", msgFullyQlfName)
-	// fmt.Println("protobuf.go - DeserializeRecordName - GetName: ", messageDesc.GetName())
-
-	// subject, err := s.SubjectNameStrategy(msgFullyQlfName, s.SerdeType, info)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// fmt.Println("protobuf.go - DeserializeRecordName - subject: ", subject)
-
-	// // mytry .... only in case default MessageFactory ........
-
-	// // case costumized MessageFactory, return the mqn as goMQN.Type
-	// partsMsg := strings.Split(msgFullyQlfName, ".")
-	// if partsMsg[0] == "goFullyQualifiedName" {
-	// 	msgFullyQlfName = strings.TrimPrefix(msgFullyQlfName, "goFullyQualifiedName.")
-	// }
-
-	// //if msgFullyQlfName == "proto.Job" {
-	// //	msgFullyQlfName = "Job"
-	// // }
-	// // end ................................................
 
 	var subjects []string
 	if len(info.Subject) > 1 {
@@ -658,8 +619,6 @@ func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int
 	if err != nil {
 		return 0, nil, info, err
 	}
-
-	// fmt.Println("protobuf.go - setMessageDescriptor - info: ", info.Schema)
 
 	fd, err := s.toFileDesc(info)
 	if err != nil {
@@ -731,47 +690,6 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 	}
 
 	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
-
-	// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - msgFullyQlfName: ", msgFullyQlfName)
-	// // add the topic
-	// msgFullyQlfName = fmt.Sprintf("%s-%s", topic, msgFullyQlfName)
-	// totSubjects := len(info.Subject)
-	// if totSubjects > 1 {
-	// 	partsMsg := strings.Split(msgFullyQlfName, ".")
-	// 	// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - partsMsg: ", partsMsg)
-	// 	// len(partsMsg) == 1 means the protobuf have no packageName(Mystruct)
-	// 	if len(partsMsg) == 1 {
-	// 		for i, subject := range info.Subject {
-	// 			// topic-main.Job-value, topic-proto.Job-value
-	// 			// msgFullyQualifiedName: Job
-	// 			// pass any msgFullyQlfName which match the topic
-	// 			if strings.HasPrefix(subject, topic) {
-	// 				// fmt.Println("protobuf.go - DeserializeIntoTopicRecordName - subject: ", subject)
-	// 				err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
-	// 				if err == nil {
-	// 					return err
-	// 				}
-	// 			}
-	// 			if totSubjects == i+1 {
-	// 				return fmt.Errorf("unfound subject declaration")
-	// 			}
-	// 		}
-	// 	} else {
-	// 		for i, subject := range info.Subject {
-	// 			if strings.HasPrefix(subject, msgFullyQlfName) {
-	// 				err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
-	// 				if err == nil {
-	// 					return err
-	// 				}
-
-	// 			}
-	// 			if totSubjects == i+1 {
-	// 				return fmt.Errorf("unfound subject declaration")
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 }
 
 // func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
@@ -899,19 +817,6 @@ func toMessageDesc(descriptor desc.Descriptor, msgIndexes []int) (*desc.MessageD
 }
 
 func (s *Deserializer) protoMessageFactory(subject []string, name string) (interface{}, error) {
-	// // my add ...............
-
-	// fmt.Println("protobuf.go - protoMessageFactory - see the name before: ", name)
-	// // in case package has been added by gokfk-regent, remove it
-	// partsMsg := strings.Split(subject, ".")
-	// if partsMsg[0] == "goFullyQualifiedName" {
-	// 	name = partsMsg[len(partsMsg)-1]
-	// 	name = strings.TrimSuffix(name, "-value")
-	// 	name = strings.TrimSuffix(name, "-key")
-	// }
-
-	// // end ............
-
 	mt, err := s.ProtoRegistry.FindMessageByName(protoreflect.FullName(name))
 	if mt == nil {
 		err = fmt.Errorf("unable to find MessageType %s", name)

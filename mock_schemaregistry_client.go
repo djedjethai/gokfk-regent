@@ -116,8 +116,6 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		}
 	}
 
-	fmt.Println("mock - Register - fullQualifName: ", fullQualifName)
-
 	if parts[0] == "jsonschema" ||
 		fullQualifName == "avro" ||
 		fullQualifName == "recordname" ||
@@ -191,9 +189,6 @@ func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema 
 func (c *mockclient) getIDFromRegistry(subject string, schema SchemaInfo) (int, error) {
 	var id = -1
 
-	// fmt.Println("mock - getIDFromRegistry - subject: ", subject)
-	// fmt.Println("mock - getIDFromRegistry - c.idToSchemaCache: ", c.idToSchemaCache)
-
 	c.idToSchemaCacheLock.RLock()
 	for key, value := range c.idToSchemaCache {
 		if key.subject == subject && schemasEqual(*value, schema) {
@@ -244,7 +239,6 @@ func (c *mockclient) generateVersion(subject string, schema SchemaInfo) error {
 	return nil
 }
 
-// TODO to implement
 func (c *mockclient) GetByID(id int) (schema SchemaInfo, err error) {
 	cacheKey := subjectOnlyID{
 		id: id,
@@ -257,15 +251,11 @@ func (c *mockclient) GetByID(id int) (schema SchemaInfo, err error) {
 	}
 	subject := ""
 	posErr := url.Error{
-		Op: "GET",
-		// TODO
-		// URL: c.url.String() + fmt.Sprintf(schemasByID, id, id),
+		Op:  "GET",
 		URL: c.url.String() + fmt.Sprintf(schemasBySubject, id, url.QueryEscape(subject)),
 		Err: errors.New("Subject Not Found"),
 	}
 	return SchemaInfo{}, &posErr
-
-	// return SchemaInfo{}, nil
 }
 
 // GetBySubjectAndID returns the schema identified by id
@@ -291,7 +281,6 @@ func (c *mockclient) GetBySubjectAndID(subject string, id int) (schema SchemaInf
 
 // GetID checks if a schema has been registered with the subject. Returns ID if the registration can be found
 func (c *mockclient) GetID(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
-	// NOTE added as well
 	schema.Subject = append(schema.Subject, subject)
 
 	schemaJSON, err := schema.MarshalJSON()
@@ -443,7 +432,6 @@ func (c *mockclient) deleteID(key subjectJSON, id int, permanent bool) {
 // GetVersion finds the Subject SchemaMetadata associated with the provided schema
 // Returns integer SchemaMetadata number
 func (c *mockclient) GetVersion(subject string, schema SchemaInfo, normalize bool) (int, error) {
-	// NOTE added ......
 	schema.Subject = append(schema.Subject, subject)
 
 	schemaJSON, err := schema.MarshalJSON()

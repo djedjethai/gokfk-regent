@@ -156,7 +156,7 @@ func (s *SpecificSerializer) addFullyQualifiedNameToSchema(avroStr string, msg i
 	return modifiedJSON, fullyQualifiedName, nil
 }
 
-// Serialize implements serialization of generic Avro data
+// SerializeRecordName implements serialization of generic Avro data
 func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -169,8 +169,6 @@ func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...str
 	default:
 		return nil, fmt.Errorf("serialization target must be an avro message. Got '%v'", t)
 	}
-
-	// fmt.Println("avro_specific.go SerializeRecordName avroMsg.Schema: ", avroMsg.Schema())
 
 	modifiedJSON, msgFQN, err := s.addFullyQualifiedNameToSchema(avroMsg.Schema(), msg)
 	if err != nil {
@@ -204,6 +202,7 @@ func (s *SpecificSerializer) SerializeRecordName(msg interface{}, subject ...str
 	return payload, nil
 }
 
+// SerializeTopicRecordName implements serialization of generic Avro data
 func (s *SpecificSerializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -260,6 +259,7 @@ func NewSpecificDeserializer(client schemaregistry.Client, serdeType serde.Type,
 	return s, nil
 }
 
+// DeserializeTopicRecordName implements deserialization of specific Avro data
 func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -278,8 +278,6 @@ func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload 
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-
-	// fmt.Println("avro_specific.go - DerializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
 
 	writer, err := s.toAvroType(info)
 	if err != nil {
@@ -344,6 +342,7 @@ func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload 
 
 }
 
+// DeserializeRecordName implements deserialization of specific Avro data
 func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -362,8 +361,6 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
-
-	// fmt.Println("avro_specific.go - DerializeRecordName - fullyQualifiedName: ", fullyQualifiedName)
 
 	writer, err := s.toAvroType(info)
 	if err != nil {
@@ -418,10 +415,12 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 	return avroMsg, nil
 }
 
+// DeserializeIntoTopicRecordName implements deserialization of specific Avro data
 func (s *SpecificDeserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
 	return s.DeserializeIntoRecordName(subjects, payload)
 }
 
+// DeserializeIntoRecordName implements deserialization of specific Avro data
 func (s *SpecificDeserializer) DeserializeIntoRecordName(subjects map[string]interface{}, payload []byte) error {
 	if payload == nil {
 		return nil

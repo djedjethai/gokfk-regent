@@ -625,7 +625,6 @@ func TestAvroSpecificSerdeDeserializeTopicRecordNameWithNoReceiver(t *testing.T)
 	deser.Client = ser.Client
 	// register invalid schema
 	deser.MessageFactory = RegisterTRNMessageFactoryNoReceiverSpecific()
-	// deser.MessageFactory = RegisterTRNMessageFactoryInvalidReceiverSpecific()
 
 	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))

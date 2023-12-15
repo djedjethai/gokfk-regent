@@ -21,7 +21,6 @@ package protobuf
 
 import (
 	"errors"
-	// "fmt"
 	"fmt"
 	"reflect"
 	"testing"
@@ -276,8 +275,6 @@ func TestProtobufSerdeDeserializeRecordName(t *testing.T) {
 	deser.ProtoRegistry.RegisterMessage(recLinked.ProtoReflect().Type())
 	deser.ProtoRegistry.RegisterMessage(recPiz.ProtoReflect().Type())
 
-	fmt.Println("")
-
 	newobj, err := deser.DeserializeRecordName(bytesInner)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(proto.Message).ProtoReflect(), recLinked.ProtoReflect()))
 
@@ -515,7 +512,6 @@ func TestProtobufSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T)
 	deser.ProtoRegistry.RegisterMessage(recLinked.ProtoReflect().Type())
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-	// serde.MaybeFail("deserialization", serde.Expect(err.Error(), "deserialization target must be a protobuf message"))
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "recipient proto object differs from incoming events"))
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
@@ -560,8 +556,6 @@ const (
 
 func RegisterTRNMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
-		fmt.Println("see the subject: ", subjects)
-		fmt.Println("see the name: ", name)
 		// loop on the subjects as the SR will refere all objects to the same subject
 		for _, subject := range subjects {
 			switch subject {
@@ -570,10 +564,8 @@ func RegisterTRNMessageFactory() func([]string, string) (interface{}, error) {
 			case topicPizzaValue, secondPizzaValue:
 				return &recordname.Pizza{}, nil
 			case "topic-protorecordname.LinkedList-value", "second-protorecordname.LinkedList-value":
-				// case no packageName
 				return &trn.LinkedList{}, nil
 			case "topic-protorecordname.Pizza-value", "second-protorecordname.Pizza-value":
-				// case no packageName
 				return &trn.Pizza{}, nil
 
 			}
@@ -597,10 +589,8 @@ func RegisterTRNMessageFactoryInvalidReceiver() func([]string, string) (interfac
 			case topicPizzaValue, secondPizzaValue:
 				return &trn.LinkedList{}, nil
 			case "topic-protorecordname.LinkedList-value", "second-protorecordname.LinkedList-value":
-				// case no packageName
 				return &trn.Pizza{}, nil
 			case "topic-protorecordname.Pizza-value", "second-protorecordname.Pizza-value":
-				// case no packageName
 				return &recordname.LinkedList{}, nil
 			}
 		}
@@ -643,7 +633,6 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 
 	serde.MaybeFail("Deserializer configuration", err)
 	deser.Client = ser.Client
-	// deser.MessageFactory = RegisterMessageFactory()
 
 	deser.ProtoRegistry.RegisterMessage(recLinked.ProtoReflect().Type())
 	deser.ProtoRegistry.RegisterMessage(recPiz.ProtoReflect().Type())

@@ -494,8 +494,6 @@ const (
 
 func RegisterTRNMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
-		fmt.Println("see the subject: ", subjects)
-		fmt.Println("see the name: ", name)
 		// in json and avro we can switch on the name as the fullyQName is register
 		switch name {
 		case topicLinkedList, secondLinkedList:
@@ -550,7 +548,6 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) 
 
 	serde.MaybeFail("Deserializer configuration", err)
 	deser.Client = ser.Client
-	// deser.MessageFactory = RegisterMessageFactory()
 
 	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	fmt.Println("seeee: ", newobj)
@@ -593,7 +590,6 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	deser.Client = ser.Client
 	deser.MessageFactory = RegisterTRNMessageFactory()
 
-	// newobj, err := deser.DeserializeRecordName(bytesInner)
 	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
 
@@ -617,8 +613,6 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) 
 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	// bytesObj, err := ser.SerializeRecordName(&obj)
-	// serde.MaybeFail("serialization", err)
 	bytesObj, err := ser.SerializeTopicRecordName(topic, &obj, topicPizza)
 	serde.MaybeFail("serialization", err)
 
@@ -645,8 +639,6 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithInvalidSchema(t *testing.
 	ser, err := NewGenericSerializer(client, serde.ValueSerde, NewSerializerConfig())
 	serde.MaybeFail("Serializer configuration", err)
 
-	// bytesInner, err := ser.SerializeRecordName(&inner)
-	// serde.MaybeFail("serialization", err)
 	bytesInner, err := ser.SerializeTopicRecordName(topic, &inner, topicLinkedList)
 	serde.MaybeFail("serialization", err)
 
@@ -665,7 +657,6 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithInvalidSchema(t *testing.
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "destination is not a pointer string"))
 
 	newobj, err = deser.DeserializeRecordName(bytesObj)
-	// fmt.Println("see the obj: ", newobj)
 	serde.MaybeFail("deserializeInvalidReceiver", err)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&{0}`))
 }

@@ -84,6 +84,7 @@ func (s *GenericSerializer) addFullyQualifiedNameToSchema(avroStr, msgFQN string
 	return json.Marshal(data)
 }
 
+// SerializeTopicRecordName implements serialization of generic Avro data
 func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -135,7 +136,7 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	return payload, nil
 }
 
-// Serialize implements serialization of generic Avro data
+// SerializeRecordName implements serialization of generic Avro data
 func (s *GenericSerializer) SerializeRecordName(msg interface{}, subject ...string) ([]byte, error) {
 	if msg == nil {
 		return nil, nil
@@ -228,6 +229,7 @@ func NewGenericDeserializer(client schemaregistry.Client, serdeType serde.Type, 
 	return s, nil
 }
 
+// DeserializeTopicRecordName implements deserialization of generic Avro data
 func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -290,6 +292,7 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 	return msg, err
 }
 
+// DeserializeRecordName implements deserialization of generic Avro data
 func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
 	if payload == nil {
 		return nil, nil
@@ -345,6 +348,7 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 
 }
 
+// DeserializeIntoTopicRecordName implements deserialization of generic Avro data
 func (s *GenericDeserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
 	return s.DeserializeIntoRecordName(subjects, payload)
 }
@@ -392,7 +396,7 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println("avro_generic.go - Deserialize - info: ", info)
+
 	writer, name, err := s.toType(info)
 	if err != nil {
 		return nil, err

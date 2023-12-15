@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * This file has been modified by Jerome Bidault (jeromebdtdev@gmail.com) to include additional functionality.
  */
 
 package schemaregistry
@@ -68,6 +70,29 @@ func NewConfig(url string) *Config {
 	c.SslCertificateLocation = ""
 	c.SslKeyLocation = ""
 	c.SslCaLocation = ""
+	c.SslDisableEndpointVerification = false
+
+	c.ConnectionTimeoutMs = 10000
+	c.RequestTimeoutMs = 10000
+
+	return c
+}
+
+func NewConfigTLS(url, pathToCertSSL, pathToKeySSL, pathToCaSSL string) *Config {
+	c := &Config{}
+
+	c.SchemaRegistryURL = url
+
+	c.BasicAuthUserInfo = ""
+	c.BasicAuthCredentialsSource = "URL"
+
+	c.SaslMechanism = "GSSAPI"
+	c.SaslUsername = ""
+	c.SaslPassword = ""
+
+	c.SslCertificateLocation = pathToCertSSL
+	c.SslKeyLocation = pathToKeySSL
+	c.SslCaLocation = pathToCaSSL
 	c.SslDisableEndpointVerification = false
 
 	c.ConnectionTimeoutMs = 10000
