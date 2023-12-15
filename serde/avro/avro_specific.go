@@ -497,6 +497,20 @@ func (s *SpecificDeserializer) Deserialize(topic string, payload []byte) (interf
 	if err != nil {
 		return nil, err
 	}
+	if msg == struct{}{} {
+		codec, err := goavro.NewCodec(info.Schema)
+		if err != nil {
+			return nil, err
+		}
+
+		native, _, err := codec.NativeFromBinary(payload[5:])
+		if err != nil {
+			return nil, err
+		}
+
+		return native, nil
+	}
+
 	var avroMsg SpecificAvroMessage
 	switch t := msg.(type) {
 	case SpecificAvroMessage:

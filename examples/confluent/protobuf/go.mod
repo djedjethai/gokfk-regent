@@ -2,7 +2,7 @@ module examples
 
 go 1.21.0
 
-replace github.com/djedjethai/gokfk-regent => ../..
+replace github.com/djedjethai/gokfk-regent => ../../..
 
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.2.0

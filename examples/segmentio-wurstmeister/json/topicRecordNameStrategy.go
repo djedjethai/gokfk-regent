@@ -287,11 +287,11 @@ func (c *srConsumer) Run() error {
 
 	msg := make(chan interface{})
 
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
 
-	// go c.getResponseTopicRecordName(ctx, msg, c.reader)
-	// go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
+	go c.getResponseTopicRecordName(ctx, msg, c.reader)
+	go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
 
 	for {
 		select {

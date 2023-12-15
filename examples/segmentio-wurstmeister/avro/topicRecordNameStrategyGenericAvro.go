@@ -82,10 +82,10 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		// err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
-		// if err != nil {
-		// 	log.Println("Error producing Message: ", err)
-		// }
+		err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
 
 		time.Sleep(2 * time.Second)
 	}
@@ -284,11 +284,11 @@ func (c *srConsumer) Run() error {
 
 	msg := make(chan interface{})
 
-	// go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
-	// go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
+	go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
+	go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
 
-	go c.getResponseTopicRecordName(ctx, msg, c.reader)
-	go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
+	// go c.getResponseTopicRecordName(ctx, msg, c.reader)
+	// go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
 
 	fmt.Println("start consuming ... !!")
 	for {

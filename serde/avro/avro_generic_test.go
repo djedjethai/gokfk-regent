@@ -550,7 +550,6 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) 
 	deser.Client = ser.Client
 
 	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
-	fmt.Println("seeee: ", newobj)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `map[Value:100]`))
 
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)

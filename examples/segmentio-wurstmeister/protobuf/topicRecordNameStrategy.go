@@ -70,10 +70,10 @@ func producer() {
 	}
 
 	// Job protobuf have no package name, so it will refer to Go fullyQualifiedName(proto.Job)
-	// job := &pb.Job{
-	// 	Job:   "doctor",
-	// 	Field: "medicin",
-	// }
+	job := &pb.Job{
+		Job:   "doctor",
+		Field: "medicin",
+	}
 
 	for {
 		// // return an err as the topic-fullyQualifiedName unmatch the topic
@@ -83,20 +83,20 @@ func producer() {
 		// 	log.Println("Error producing Message: ", err)
 		// }
 
-		// err = producer.ProduceMessage(city, topic, topicSubjectAddress)
-		// if err != nil {
-		// 	log.Println("Error producing Message: ", err)
-		// }
+		err = producer.ProduceMessage(city, topic, topicSubjectAddress)
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
 
 		err = producer.ProduceMessage(city, secondTopic, secondTopicSubjectAddress)
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
 
-		// err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
-		// if err != nil {
-		// 	log.Println("Error producing Message: ", err)
-		// }
+		err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
+		if err != nil {
+			log.Println("Error producing Message: ", err)
+		}
 
 		time.Sleep(2 * time.Second)
 	}
@@ -311,11 +311,11 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
 
 	msg := make(chan interface{})
 
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, receiverTopic)
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, receiverSecondTopic)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, receiverTopic)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, receiverSecondTopic)
 
-	// go c.getResponseTopicRecordName(ctx, msg, c.reader)
-	// go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
+	go c.getResponseTopicRecordName(ctx, msg, c.reader)
+	go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
 
 	for {
 		select {

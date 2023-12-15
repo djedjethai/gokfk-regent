@@ -187,23 +187,18 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 	}, nil
 }
 
-// // RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
-// func (c *srConsumer) RegisterMessageFactory(receiver interface{}) func(string, string) (interface{}, error) {
-// 	return func(subject string, name string) (interface{}, error) {
-// 		return receiver, nil
-// 	}
-// }
-
-// NOTE doing like so make sure the event subject match the expected receiver's subject
-func (c *srConsumer) RegisterMessageFactoryWithMap(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
+func (c *srConsumer) RegisterMessageFactory(subjectTypes map[string]interface{}) func([]string, string) (interface{}, error) {
 	// !!! in json there is no 'name' passed into the MessageFactory
 	// we only can rely on the subject
-	return func(subject string, name string) (interface{}, error) {
-		if tp, ok := subjectTypes[subject]; !ok {
-			return nil, fmt.Errorf("Invalid receiver")
-		} else {
-			return tp, nil
+	return func(subjects []string, name string) (interface{}, error) {
+		for _, subject := range subjects {
+			if tp, ok := subjectTypes[subject]; !ok {
+				return nil, fmt.Errorf("Invalid receiver")
+			} else {
+				return tp, nil
+			}
 		}
+		return nil, fmt.Errorf("receiver not found")
 	}
 }
 
@@ -214,10 +209,9 @@ func (c *srConsumer) Run(topic string) error {
 		return err
 	}
 
-	// receivers := make(map[string]interface{})
-	// receivers[fmt.Sprintf("%v-value", topic)] = &Person{}
-	// c.deserializer.MessageFactory = c.RegisterMessageFactoryWithMap(receivers)
-	// c.deserializer.MessageFactory = c.RegisterMessageFactory(&Person{})
+	receiver := make(map[string]interface{})
+	receiver[fmt.Sprintf("%v-value", topic)] = &Person{}
+	c.deserializer.MessageFactory = c.RegisterMessageFactory(receiver)
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -230,7 +224,7 @@ func (c *srConsumer) Run(topic string) error {
 		if err != nil {
 			return err
 		}
-		// fmt.Println("with MessageFactory: ", msg.(*Person).Name)
+		fmt.Println("with MessageFactory: ", msg.(*Person).Name)
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
 		// use deserializer.DeserializeInto to get a struct back

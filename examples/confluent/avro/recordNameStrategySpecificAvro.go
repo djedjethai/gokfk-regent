@@ -209,29 +209,18 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // RegisterMessageFactory Pass a pointer to the receiver object for the SR to unmarshal the payload into
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
-		fmt.Println("the subject: ", subject)
-		fmt.Println("the name: ", name)
 		switch name {
 		case "personrecord.Person":
 			return &avSch.Person{}, nil
 		case "addressrecord.Address":
 			return &avSch.Address{}, nil
+		case "schemas.Job":
+			return &avSch.Job{}, nil
 		}
 		return nil, fmt.Errorf("Err RegisterMessageFactory")
 		// return receiver, nil
 	}
 }
-
-// // NOTE doing like so make sure the event subject match the expected receiver's subject
-// func (c *srConsumer) RegisterMessageFactoryWithMap(subjectTypes map[string]interface{}) func(string, string) (interface{}, error) {
-// 	return func(subject string, name string) (interface{}, error) {
-// 		if tp, ok := subjectTypes[name]; !ok {
-// 			return nil, errors.New("Invalid receiver")
-// 		} else {
-// 			return tp, nil
-// 		}
-// 	}
-// }
 
 // Run consumer
 // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
@@ -247,10 +236,13 @@ func (c *srConsumer) Run(topic string) error {
 	ref := make(map[string]interface{})
 	px := avSch.Person{}
 	addr := avSch.Address{}
+	job := avSch.Job{}
 	msgFQN := "personrecord.Person"
 	addrFQN := "addressrecord.Address"
+	jobFQN := "schemas.Job"
 	ref[msgFQN] = &px
 	ref[addrFQN] = &addr
+	ref[jobFQN] = &job
 
 	for {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
@@ -265,18 +257,24 @@ func (c *srConsumer) Run(topic string) error {
 		}
 		// if _, ok := msg.(*avSch.Person); ok {
 		// 	fmt.Println("Person: ", msg.(*avSch.Person).Name, " - ", msg.(*avSch.Person).Age)
-		// } else {
+		// }
+		// if _, ok := msg.(*avSch.Address); ok {
 		// 	fmt.Println("Address: ", msg.(*avSch.Address).City, " - ", msg.(*avSch.Address).Street)
 		// }
+		// if _, ok := msg.(*avSch.Job); ok {
+		// 	fmt.Println("Job: ", msg.(*avSch.Job).Job, " - ", msg.(*avSch.Job).Field)
+		// }
+
 		c.handleMessageAsInterface(msg, int64(kafkaMsg.TopicPartition.Offset))
 
-		// // use deserializer.DeserializeInto to get a struct back
-		// err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
-		// if err != nil {
-		// 	return err
-		// }
-		// fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
-		// fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+		// use deserializer.DeserializeInto to get a struct back
+		err = c.deserializer.DeserializeIntoRecordName(ref, kafkaMsg.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
+		fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
+		fmt.Println("See the Job struct: ", job.Job, " - ", job.Field)
 
 		if _, err = c.consumer.CommitMessage(kafkaMsg); err != nil {
 			return err

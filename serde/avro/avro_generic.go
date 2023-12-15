@@ -339,7 +339,6 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 			return nil, err
 		}
 
-		fmt.Println("see the native: ", native)
 		return native, nil
 	}
 
@@ -410,6 +409,21 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 	if err != nil {
 		return nil, err
 	}
+
+	if msg == struct{}{} {
+		codec, err := goavro.NewCodec(info.Schema)
+		if err != nil {
+			return nil, err
+		}
+
+		native, _, err := codec.NativeFromBinary(payload[5:])
+		if err != nil {
+			return nil, err
+		}
+
+		return native, nil
+	}
+
 	_, err = avro.Unmarshal(payload[5:], msg, writer)
 	return msg, err
 }
