@@ -1,5 +1,22 @@
 examples/confluent/kafka
+examples/confluent/avro/go.mod
+examples/confluent/avro/go.sum
+examples/confluent/avro/Makefile
+examples/confluent/json/go.mod
+examples/confluent/json/go.sum
+examples/confluent/protobuf/go.sum
+examples/confluent/protobuf/go.mod
+
+
 examples/segmentio-wurstmeister/kafka
+examples/segmentio-wurstmeister/avro/go.mod
+examples/segmentio-wurstmeister/avro/go.sum
+examples/segmentio-wurstmeister/avro/Makefile
+examples/segmentio-wurstmeister/json/go.mod
+examples/segmentio-wurstmeister/json/go.sum
+examples/segmentio-wurstmeister/protobuf/go.mod
+examples/segmentio-wurstmeister/protobuf/go.sum
+examples/segmentio-wurstmeister/protobuf/Makefile
 
 examples/protobuf/go.mod
 examples/protobuf/go.sum
