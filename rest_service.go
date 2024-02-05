@@ -18,10 +18,14 @@ package schemaregistry
 
 import (
 	"bytes"
+	// "crypto/ecdsa"
+	//	"crypto/rand"
+	// "crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	//	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -159,17 +163,42 @@ func configureTLS(conf *Config, tlsConf *tls.Config) error {
 	caFile := conf.SslCaLocation
 	unsafe := conf.SslDisableEndpointVerification
 
+	// NOTE see tls
+	fmt.Println("certFile: ", certFile)
+	fmt.Println("keyFile: ", keyFile)
+	fmt.Println("caFile: ", caFile)
+
 	var err error
 	if certFile != "" {
 		if keyFile == "" {
 			return errors.New(
 				"SslKeyLocation needs to be provided if using SslCertificateLocation")
 		}
-		var cert tls.Certificate
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+
+		// Read the certificate file content
+		certPEM, err := ioutil.ReadFile(certFile)
 		if err != nil {
 			return err
 		}
+
+		// Provide a callback function to decrypt the private key
+		keyPEM, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			return err
+		}
+
+		var cert tls.Certificate
+		cert, err = tls.X509KeyPair(certPEM, keyPEM)
+		if err != nil {
+			fmt.Println("err loading keyPair: ", err)
+			return err
+		}
+
+		// var cert tls.Certificate
+		// cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		// if err != nil {
+		// 	return err
+		// }
 		tlsConf.Certificates = []tls.Certificate{cert}
 	}
 
@@ -188,12 +217,173 @@ func configureTLS(conf *Config, tlsConf *tls.Config) error {
 		if !tlsConf.RootCAs.AppendCertsFromPEM(caCert) {
 			return fmt.Errorf("could not parse certificate from %s", caFile)
 		}
+		// tlsConf.ServerName = "ca.datahub"
+		// tlsConf.ServerName = "datahub"
 	}
 
 	tlsConf.BuildNameToCertificate()
 
 	return err
 }
+
+// // configureTLS populates tlsConf
+// func configureTLS(conf *Config, tlsConf *tls.Config) error {
+//
+// 	certFile := conf.SslCertificateLocation
+// 	keyFile := conf.SslKeyLocation
+// 	caFile := conf.SslCaLocation
+// 	unsafe := conf.SslDisableEndpointVerification
+// 	password := conf.SslPassword
+//
+// 	// NOTE see tls
+// 	fmt.Println("certFile: ", certFile)
+// 	fmt.Println("keyFile: ", keyFile)
+// 	fmt.Println("caFile: ", caFile)
+// 	fmt.Println("password: ", password)
+//
+// 	var err error
+//
+// 	if certFile != "" {
+// 		if keyFile == "" {
+// 			return errors.New("SslKeyLocation needs to be provided if using SslCertificateLocation")
+// 		}
+//
+// 		// Read the certificate file content
+// 		certPEM, err := ioutil.ReadFile(certFile)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		// Provide a callback function to decrypt the private key
+// 		keyPEM, err := ioutil.ReadFile(keyFile)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		keyBlock, rest := pem.Decode(keyPEM)
+// 		if keyBlock == nil {
+// 			return errors.New("failed to decode PEM block containing private key")
+// 		}
+//
+// 		// Check for the rest of the block (unused part)
+// 		if len(rest) > 0 {
+// 			log.Println("Warning: Additional data found after PEM block")
+// 		}
+//
+// 		// // TODO remove the decrypt part
+// 		// // var decryptedKey []byte
+// 		// fmt.Println("is blockkkkkkkkkkk: ", x509.IsEncryptedPEMBlock(keyBlock))
+// 		// if x509.IsEncryptedPEMBlock(keyBlock) && password != "" {
+// 		// 	// Encrypted key, decrypt it
+// 		// 	decryptedKey, err = x509.DecryptPEMBlock(keyBlock, []byte(password))
+// 		// 	if err != nil {
+// 		// 		return fmt.Errorf("failed to decrypt private key: %v", err)
+// 		// 	}
+//
+// 		// 	// Update keyBlock with the plaintext bytes and clear the now obsolete
+// 		// 	// headers.
+// 		// 	keyBlock.Bytes = decryptedKey
+//
+// 		// 	// Turn the key back into PEM format so we can leverage tls.X509KeyPair,
+// 		// 	// which will deal with the intricacies of error handling, different key
+// 		// 	// types, certificate chains, etc.
+// 		// 	keyPEM = pem.EncodeToMemory(keyBlock)
+//
+// 		// }
+//
+// 		// // Parse the private key
+// 		// key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+// 		// if err != nil {
+// 		// 	fmt.Println("errr ParsePKCS1PrivateKey.........")
+// 		// 	return err
+// 		// }
+//
+// 		// cc, err := x509.MarshalPKCS8PrivateKey(key)
+// 		// if err != nil {
+// 		// 	fmt.Println("errr MarshalPKCS8PrivateKey.........")
+// 		// 	return err
+// 		// }
+//
+// 		// encryptedKey, err := x509.EncryptPEMBlock(rand.Reader, "RSA PRIVATE KEY", cc, []byte(password), x509.PEMCipherAES256)
+// 		// if err != nil {
+// 		// 	return fmt.Errorf("failed to encrypt private key: %v", err)
+// 		// }
+//
+// 		// // Now, 'key' is of type 'PrivateKey' and can be asserted to a specific type:
+// 		// switch k := key.(type) {
+// 		// case *rsa.PrivateKey:
+// 		// 	// It's an RSA private key
+// 		// 	fmt.Println("RSA Private Key:", k)
+// 		// case *ecdsa.PrivateKey:
+// 		// 	// It's an ECDSA private key
+// 		// 	fmt.Println("ECDSA Private Key:", k)
+// 		// default:
+// 		// 	// It's another type of private key
+// 		// 	fmt.Println("Unknown Private Key Type")
+// 		// }
+//
+// 		// // Convert it to pem
+// 		block := &pem.Block{
+// 			Type: "RSA PRIVATE KEY",
+// 			// Type:    "ENCRYPTED PRIVATE KEY",
+// 			Headers: keyBlock.Headers, // Preserve existing headers
+// 			Bytes:   keyBlock.Bytes,
+// 		}
+//
+// 		// if !x509.IsEncryptedPEMBlock(keyBlock) && password != "" {
+//
+// 		// fmt.Println("wahhhhh the fuckkkkkk 000")
+//
+// 		// // Encrypt the private key with the provided password
+// 		// encryptedKey, err := x509.EncryptPEMBlock(rand.Reader, "ENCRYPTED PRIVATE KEY", keyPEM, []byte(password), x509.PEMCipherAES256)
+//
+// 		block, err = x509.EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(password), x509.PEMCipherAES256)
+// 		// if err != nil {
+// 		//	return fmt.Errorf("failed to encrypt private key: %v", err)
+// 		// }
+// 		// Create a callback function to provide the passphrase for decrypting the private key
+// 		// getPassphrase := func(interface{}) ([]byte, error) {
+// 		// 	return []byte(password), nil
+// 		// }
+//
+// 		// // Save the encrypted private key back to keyPEM
+// 		keyPEM = pem.EncodeToMemory(block)
+//
+// 		fmt.Println("wahhhhh the fuckkkkkk 111: ", string(keyPEM))
+//
+// 		// Load X509 key pair with decrypted key
+// 		var cert tls.Certificate
+// 		cert, err = tls.X509KeyPair(certPEM, keyPEM)
+// 		if err != nil {
+// 			fmt.Println("err loading keyPair: ", err)
+// 			return err
+// 		}
+// 		tlsConf.Certificates = []tls.Certificate{cert}
+// 	}
+//
+// 	if caFile != "" {
+// 		if unsafe {
+// 			log.Println("WARN: endpoint verification is currently disabled. " +
+// 				"This feature should be configured for development purposes only")
+// 		}
+// 		var caCert []byte
+// 		caCert, err = ioutil.ReadFile(caFile)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		tlsConf.RootCAs = x509.NewCertPool()
+// 		if !tlsConf.RootCAs.AppendCertsFromPEM(caCert) {
+// 			return fmt.Errorf("could not parse certificate from %s", caFile)
+// 		}
+// 	}
+//
+// 	fmt.Println("wahhhhh the fuckkkkkk")
+//
+// 	tlsConf.BuildNameToCertificate()
+//
+// 	return err
+// }
 
 // configureTransport returns a new Transport for use by the Confluent Schema Registry REST client
 func configureTransport(conf *Config) (*http.Transport, error) {

@@ -45,6 +45,8 @@ type Config struct {
 	SslCaLocation string
 	// SslDisableEndpointVerification determines whether to disable endpoint verification.
 	SslDisableEndpointVerification bool
+	// SslPassword specifies the password for SSL
+	SslPassword string
 
 	// ConnectionTimeoutMs determines the connection timeout in milliseconds.
 	ConnectionTimeoutMs int
@@ -78,7 +80,7 @@ func NewConfig(url string) *Config {
 	return c
 }
 
-func NewConfigTLS(url, pathToCertSSL, pathToKeySSL, pathToCaSSL string) *Config {
+func NewConfigTLS(url, pathToCertSSL, pathToKeySSL, pathToCaSSL string, password ...string) *Config {
 	c := &Config{}
 
 	c.SchemaRegistryURL = url
@@ -94,6 +96,10 @@ func NewConfigTLS(url, pathToCertSSL, pathToKeySSL, pathToCaSSL string) *Config 
 	c.SslKeyLocation = pathToKeySSL
 	c.SslCaLocation = pathToCaSSL
 	c.SslDisableEndpointVerification = false
+	c.SslPassword = ""
+	if len(password) > 0 && password[0] != "" {
+		c.SslPassword = password[0]
+	}
 
 	c.ConnectionTimeoutMs = 10000
 	c.RequestTimeoutMs = 10000
