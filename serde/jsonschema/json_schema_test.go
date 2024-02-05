@@ -542,10 +542,14 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
 
-	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Size, obj.Size))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[0], obj.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
+
+	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
 func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) {
@@ -569,7 +573,7 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) 
 	// register invalid receiver
 	deser.MessageFactory = RegisterTRNMessageFactoryNoReceiver()
 
-	newobj, err := deser.DeserializeRecordName(bytesObj)
+	newobj, err := deser.DeserializeTopicRecordName("invalid", bytesObj)
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
@@ -598,11 +602,11 @@ func TestJSONSerdeDeserializeTopicRecordNameWithInvalidSchema(t *testing.T) {
 	// register invalid schema
 	deser.MessageFactory = RegisterTRNMessageFactoryInvalidReceiver()
 
-	newobj, err := deser.DeserializeRecordName(bytesInner)
+	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "json: Unmarshal(non-pointer string)"))
 
-	newobj, err = deser.DeserializeRecordName(bytesObj)
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserializeInvalidReceiver", err)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&{0}`))
 }

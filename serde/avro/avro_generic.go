@@ -93,15 +93,6 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
-	// add topic to the fullyQualifiedName
-	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
-
-	if len(subject) > 0 {
-		if msgFQN != subject[0] {
-			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
-		}
-	}
-
 	val := reflect.ValueOf(msg)
 	if val.Kind() == reflect.Ptr {
 		// avro.TypeOf expects an interface containing a non-pointer
@@ -115,6 +106,15 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	modifiedJSON, err := s.addFullyQualifiedNameToSchema(avroType.String(), msgFQN)
 	if err != nil {
 		return nil, err
+	}
+
+	// add topic to the fullyQualifiedName
+	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
+
+	if len(subject) > 0 {
+		if msgFQN != subject[0] {
+			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
+		}
 	}
 
 	info := schemaregistry.SchemaInfo{
@@ -247,7 +247,7 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 	}
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
-	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+	fullyQualifiedName := fmt.Sprintf("%s-%s.%s", topic, namespace, name)
 
 	writer, name, err := s.toType(info)
 	if err != nil {
@@ -266,8 +266,6 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 	}
 
 	if msg == struct{}{} {
-		// reset the namespace to the Go fullyQualifiedName
-		namespace := strings.TrimPrefix(namespace, fmt.Sprintf("%s-", topic))
 		data["namespace"] = namespace
 		tmp, err := json.Marshal(data)
 		if err != nil {
@@ -349,7 +347,36 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 
 // DeserializeIntoTopicRecordName implements deserialization of generic Avro data
 func (s *GenericDeserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
-	return s.DeserializeIntoRecordName(subjects, payload)
+	if payload == nil {
+		return fmt.Errorf("Empty payload")
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		return err
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s-%s.%s", topic, namespace, name)
+
+	v, ok := subjects[fullyQualifiedName]
+	if !ok {
+		return fmt.Errorf("unfound subject declaration")
+	}
+
+	writer, name, err := s.toType(info)
+	if err != nil {
+		return err
+	}
+
+	_, err = avro.Unmarshal(payload[5:], v, writer)
+	return err
 }
 
 // DeserializeIntoRecordName implements deserialization of generic Avro data

@@ -600,6 +600,9 @@ func TestAvroSpecificSerdeDeserializeTopicRecordNameWithHandlerAndNoPackageName(
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*rn.DemoSchema).StringField, example.StringField))
 
+	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesInner2)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
 func TestAvroSpecificSerdeDeserializeTopicRecordNameWithNoReceiver(t *testing.T) {

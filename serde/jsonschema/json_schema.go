@@ -217,6 +217,17 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
+	// Marshal the schema into a JSON []byte
+	jschema := jsonschema.Reflect(msg)
+	schemaBytes, err := json.Marshal(jschema)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
+	if err != nil {
+		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
 	// add topic to the fullyQualifiedName
 	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
 
@@ -224,19 +235,6 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		if msgFQN != subject[0] {
 			return nil, fmt.Errorf(`the payload's fullyQualifiedName: '%v' does not match the subject: '%v'`, msgFQN, subject[0])
 		}
-	}
-
-	jschema := jsonschema.Reflect(msg)
-
-	// Marshal the schema into a JSON []byte
-	schemaBytes, err := json.Marshal(jschema)
-	if err != nil {
-		return nil, err
-	}
-
-	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
-	if err != nil {
-		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
 	}
 
 	info := schemaregistry.SchemaInfo{
@@ -335,7 +333,58 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 
 // DeserializeTopicRecordName deserialise bytes
 func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
-	return s.DeserializeRecordName(payload)
+	if payload == nil {
+		return nil, nil
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	fullyQualifiedName := fmt.Sprintf("%s-%s.%s", topic, namespace, name)
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[5:], &obj)
+		if err != nil {
+			return nil, err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return nil, err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	if err != nil {
+		return nil, err
+	}
+
+	var subjects = []string{subject}
+	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(payload[5:], msg)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+
 }
 
 // DeserializeRecordName deserialise bytes
@@ -395,7 +444,50 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 
 // DeserializeIntoTopicRecordName deserialize bytes into the map interface{}
 func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
-	return s.DeserializeIntoRecordName(subjects, payload)
+	if payload == nil {
+		return fmt.Errorf("Empty payload")
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+
+	fullyQualifiedName := fmt.Sprintf("%s-%s.%s", topic, data["namespace"].(string), data["name"].(string))
+	v, ok := subjects[fullyQualifiedName]
+	if !ok {
+		return fmt.Errorf("unfound subject declaration")
+	}
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[5:], &obj)
+		if err != nil {
+			return err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = json.Unmarshal(payload[5:], v)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // DeserializeIntoRecordName deserialize bytes into the map interface{}

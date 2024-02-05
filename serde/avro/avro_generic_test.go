@@ -596,9 +596,8 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
 
 	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Size, obj.Size))
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[0], obj.Toppings[0]))
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
 }
 
 func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) {
@@ -651,11 +650,11 @@ func TestAvroGenericSerdeDeserializeTopicRecordNameWithInvalidSchema(t *testing.
 	// register invalid schema
 	deser.MessageFactory = RegisterTRNMessageFactoryInvalidReceiver()
 
-	newobj, err := deser.DeserializeRecordName(bytesInner)
+	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, ""))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "destination is not a pointer string"))
 
-	newobj, err = deser.DeserializeRecordName(bytesObj)
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserializeInvalidReceiver", err)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&{0}`))
 }
@@ -700,6 +699,9 @@ func TestAvroGenericSerdeDeserializeIntoTopicRecordName(t *testing.T) {
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizza].(*Pizza).Toppings[0], obj.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizza].(*Pizza).Toppings[1], obj.Toppings[1]))
+
+	err = deser.DeserializeIntoTopicRecordName("invalid", receivers, bytesObj)
+	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "unfound subject declaration"))
 }
 
 func TestAvroGenericSerdeDeserializeIntoTopicRecordNameWithInvalidSchema(t *testing.T) {

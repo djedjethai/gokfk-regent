@@ -61,10 +61,10 @@ func producer() {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	msg := Person{
-		Name: "robert",
-		Age:  23,
-	}
+	// msg := Person{
+	// 	Name: "robert",
+	// 	Age:  23,
+	// }
 
 	addr := Address{
 		Street: "myStreet",
@@ -72,10 +72,10 @@ func producer() {
 	}
 
 	for {
-		err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
+		// err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
+		// if err != nil {
+		// 	log.Println("Error producing Message: ", err)
+		// }
 
 		err = producer.ProduceMessage(addr, topic, "main.Address")
 		// err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
