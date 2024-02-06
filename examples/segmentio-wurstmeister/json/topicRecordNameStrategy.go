@@ -71,6 +71,8 @@ func producer() {
 		City:   "Bangkok",
 	}
 
+	count := 0
+
 	for {
 		// err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
 		// if err != nil {
@@ -83,10 +85,13 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
-		if err != nil {
-			log.Println("Error producing Message: ", err)
+		if count > 3 {
+			err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
 		}
+		count++
 
 		time.Sleep(2 * time.Second)
 	}

@@ -78,7 +78,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(topic, msg, info)
+	id, fromSR, err := s.GetID(topic, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,8 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -324,7 +325,8 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	err = json.Unmarshal(payload[5:], msg)
+	// err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return nil, err
 	}
@@ -342,6 +344,9 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		return nil, err
 	}
 
+	fmt.Println("json_schema DeserializeTopicRecordName see the info: ", info)
+	fmt.Println("json_schema DeserializeTopicRecordName see the info.Subject: ", info.Subject)
+
 	// recreate the fullyQualifiedName
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
@@ -351,10 +356,13 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 	namespace := data["namespace"].(string)
 	fullyQualifiedName := fmt.Sprintf("%s-%s.%s", topic, namespace, name)
 
+	//TODO loop on info.Subject, if not match with fully qualified Name return err
+
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +387,8 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		return nil, err
 	}
 
-	err = json.Unmarshal(payload[5:], msg)
+	// err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +419,8 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -435,7 +445,8 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		return nil, err
 	}
 
-	err = json.Unmarshal(payload[5:], msg)
+	// err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +479,8 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return err
 		}
@@ -482,7 +494,8 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 		}
 	}
 
-	err = json.Unmarshal(payload[5:], v)
+	// err = json.Unmarshal(payload[5:], v)
+	err = json.Unmarshal(payload[6:], v)
 	if err != nil {
 		return err
 	}
@@ -516,7 +529,8 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return err
 		}
@@ -530,7 +544,8 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		}
 	}
 
-	err = json.Unmarshal(payload[5:], v)
+	// err = json.Unmarshal(payload[5:], v)
+	err = json.Unmarshal(payload[6:], v)
 	if err != nil {
 		return err
 	}
@@ -550,7 +565,8 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		// err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return err
 		}
@@ -563,7 +579,8 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 			return err
 		}
 	}
-	err = json.Unmarshal(payload[5:], msg)
+	// err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return err
 	}

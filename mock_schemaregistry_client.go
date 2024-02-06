@@ -74,7 +74,7 @@ type mockclient struct {
 var _ Client = new(mockclient)
 
 // Register registers Schema aliased with subject
-func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
+func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool) (id int, fromSR int, err error) {
 
 	// add the subject to schema info in case of GetByID it does
 	// in case GetBySubjectAndID it does not but it does not matter
@@ -84,7 +84,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
-		return -1, err
+		return -1, 0, err
 	}
 
 	cacheKey := subjectJSON{
@@ -98,7 +98,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	}
 	c.schemaToIdCacheLock.RUnlock()
 	if ok {
-		return idCacheEntryVal.id, nil
+		return idCacheEntryVal.id, 0, nil
 	}
 
 	// extract the fullyQualifiedName from the subject
@@ -134,13 +134,13 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 		// case of recordName(id c.schemaToIdCache[cacheKey] unfound id == 0)
 		id, err = c.getIDFromRegistryRecordName(subject, idCacheEntryVal.id, schema)
 		if err != nil {
-			return -1, err
+			return -1, 0, err
 		}
 	} else {
 
 		id, err = c.getIDFromRegistry(subject, schema)
 		if err != nil {
-			return -1, err
+			return -1, 0, err
 		}
 	}
 
@@ -148,7 +148,7 @@ func (c *mockclient) Register(subject string, schema SchemaInfo, normalize bool)
 	c.schemaToIdCache[cacheKey] = idCacheEntry{id, false}
 	c.schemaToIdCacheLock.Unlock()
 
-	return id, nil
+	return id, 0, nil
 }
 
 func (c *mockclient) getIDFromRegistryRecordName(subject string, id int, schema SchemaInfo) (int, error) {
@@ -239,7 +239,7 @@ func (c *mockclient) generateVersion(subject string, schema SchemaInfo) error {
 	return nil
 }
 
-func (c *mockclient) GetByID(id int) (schema SchemaInfo, err error) {
+func (c *mockclient) GetByID(id, fromSR int) (schema SchemaInfo, err error) {
 	cacheKey := subjectOnlyID{
 		id: id,
 	}
