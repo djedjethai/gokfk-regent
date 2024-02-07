@@ -313,7 +313,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 			return nil, err
 		}
 	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		}
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -381,6 +381,7 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 		}
 	}
 	if !ok {
+		// TODO update the cache one more time.....
 		return nil, fmt.Errorf("mismatch subject name: %v, expected: %v", subject, info.Subject)
 	}
 
@@ -435,7 +436,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		}
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}

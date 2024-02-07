@@ -279,7 +279,7 @@ func (s *SpecificDeserializer) DeserializeTopicRecordName(topic string, payload 
 		return nil, err
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (s *SpecificDeserializer) DeserializeRecordName(payload []byte) (interface{
 		return nil, err
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +529,7 @@ func (s *SpecificDeserializer) Deserialize(topic string, payload []byte) (interf
 	if err != nil {
 		return nil, err
 	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}

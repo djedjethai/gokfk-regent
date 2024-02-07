@@ -488,12 +488,12 @@ func NewDeserializer(client schemaregistry.Client, serdeType serde.Type, conf *D
 
 // Deserialize deserialize events with subjects register with the TopicNameStrategy
 func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, error) {
-	bytesRead, messageDesc, info, err := s.setMessageDescriptor(topic, payload)
+	bytesRead, messageDesc, _, err := s.setMessageDescriptor(topic, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -516,6 +516,24 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	return protoMsg, err
 }
 
+func (s *Deserializer) retryGetSubjects(payload []byte, subjects []string, topicMFQNValue string) ([]string, error) {
+	payload[5] = 1
+	infoLast, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+	// TODO delete here
+	fmt.Println("protobuf.go DeserializeTopicRecordName infoLast.Subject: ", infoLast.Subject)
+	for _, s := range infoLast.Subject {
+		if topicMFQNValue == s {
+			subjects = append(subjects, s)
+			break
+		}
+	}
+
+	return infoLast.Subject, nil
+}
+
 // DeserializeTopicRecordName deserialize events register with the TopicRecordNameStrategy
 func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
 	if payload == nil {
@@ -530,24 +548,43 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
+	topicMsgFullyQlfNameValue, err := s.SubjectNameStrategy(topic, s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+
 	var subjects []string
-	if len(info.Subject) > 1 {
-		// if no protobufPackageName there is no msgFullyQlfName
-		// but in info.Subject it is goPackage.Mystruct
-		// only the user know which one he needs
+	if len(info.Subject) > 0 {
 		partsMsg := strings.Split(msgFullyQlfName, ".")
+		// we know protobuf have a package declared
 		if len(partsMsg) > 1 {
-			for _, v := range info.Subject {
-				if strings.HasPrefix(v, fmt.Sprintf("%s-%s", topic, msgFullyQlfName)) {
-					subjects = append(subjects, v)
+			for _, s := range info.Subject {
+				if topicMsgFullyQlfNameValue == s {
+					subjects = append(subjects, s)
 					break
 				}
 			}
+			// no match subject found
+			if len(subjects) == 0 {
+				// retry with updating the cache
+				_, err = s.retryGetSubjects(payload, subjects, topicMsgFullyQlfNameValue)
+				if err != nil {
+					return nil, err
+				}
+				if len(subjects) == 0 {
+					return nil, fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
+				}
+			}
 		} else {
-			subjects = info.Subject
+			// we know protobuf package is undefined
+			// update the cache in any case and return all subjects
+			subjects, err = s.retryGetSubjects(payload, subjects, topicMsgFullyQlfNameValue)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
-		subjects = info.Subject
+		return nil, fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
 	}
 
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)

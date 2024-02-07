@@ -121,7 +121,7 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 		Schema: string(modifiedJSON),
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *GenericSerializer) SerializeTopicRecordName(topic string, msg interface
 	if err != nil {
 		return nil, err
 	}
-	payload, err := s.WriteBytes(id, msgBytes)
+	payload, err := s.WriteBytes(id, fromSR, msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (s *GenericSerializer) SerializeRecordName(msg interface{}, subject ...stri
 		Schema: string(modifiedJSON),
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (s *GenericSerializer) SerializeRecordName(msg interface{}, subject ...stri
 	if err != nil {
 		return nil, err
 	}
-	payload, err := s.WriteBytes(id, msgBytes)
+	payload, err := s.WriteBytes(id, fromSR, msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (s *GenericSerializer) Serialize(topic string, msg interface{}) ([]byte, er
 	info := schemaregistry.SchemaInfo{
 		Schema: avroType.String(),
 	}
-	id, err := s.GetID(topic, msg, info)
+	id, fromSR, err := s.GetID(topic, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (s *GenericSerializer) Serialize(topic string, msg interface{}) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-	payload, err := s.WriteBytes(id, msgBytes)
+	payload, err := s.WriteBytes(id, fromSR, msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func (s *GenericDeserializer) DeserializeTopicRecordName(topic string, payload [
 		return nil, err
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func (s *GenericDeserializer) DeserializeRecordName(payload []byte) (interface{}
 		return nil, err
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +427,7 @@ func (s *GenericDeserializer) Deserialize(topic string, payload []byte) (interfa
 	if err != nil {
 		return nil, err
 	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}

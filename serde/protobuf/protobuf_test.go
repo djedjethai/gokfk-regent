@@ -642,9 +642,10 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
-	// wrong topic, works anyway
-	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
+	// wrong topic return an error
+	_, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
+	// serde.MaybeFail("deserialization", err, serde.Expect(newobj, nil))
 
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
@@ -719,9 +720,10 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithHandlerAndPackageName(t *tes
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
-	// wrong topic, works anyway
+	// wrong topic return an error
 	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
+	// serde.MaybeFail("deserialization", err, serde.Expect(newobj, nil))
 
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))

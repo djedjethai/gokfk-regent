@@ -129,14 +129,20 @@ func (s *BaseDeserializer) ConfigureDeserializer(client schemaregistry.Client, s
 }
 
 // SubjectNameStrategyFunc determines the subject for the given parameters
-type SubjectNameStrategyFunc func(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error)
+// type SubjectNameStrategyFunc func(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error)
+type SubjectNameStrategyFunc func(topic string, serdeType Type, fullyQualifiedName ...string) (string, error)
 
 // TopicNameStrategy creates a subject name by appending -[key|value] to the topic name.
-func TopicNameStrategy(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
+func TopicNameStrategy(topic string, serdeType Type, fullyQualifiedName ...string) (string, error) {
 	suffix := "-value"
 	if serdeType == KeySerde {
 		suffix = "-key"
 	}
+
+	if len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
+		return fmt.Sprintf("%s-%s%s", topic, fullyQualifiedName[0], suffix), nil
+	}
+
 	return topic + suffix, nil
 }
 
@@ -148,7 +154,7 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 	normalizeSchema := s.Conf.NormalizeSchemas
 
 	var id = -1
-	fullSubject, err := s.SubjectNameStrategy(subject, s.SerdeType, info)
+	fullSubject, err := s.SubjectNameStrategy(subject, s.SerdeType)
 	if err != nil {
 		return -1, 0, err
 	}
@@ -241,7 +247,7 @@ func (s *BaseDeserializer) GetSchema(subject string, payload []byte) (schemaregi
 	id := binary.BigEndian.Uint32(payload[1:5])
 	if subject != "" {
 		var err error
-		subject, err = s.SubjectNameStrategy(subject, s.SerdeType, info)
+		subject, err = s.SubjectNameStrategy(subject, s.SerdeType)
 		if err != nil {
 			return info, err
 		}
