@@ -202,7 +202,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		References: metadata.References,
 	}
 
-	id, err := s.GetID(fullName, protoMsg, info)
+	id, fromSR, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		return nil, err
 	}
 
-	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
+	payload, err := s.WriteBytes(id, fromSR, append(msgIndexBytes, msgBytes...))
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		References: metadata.References,
 	}
 
-	id, err := s.GetID(fullName, protoMsg, info)
+	id, fromSR, err := s.GetID(fullName, protoMsg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		return nil, err
 	}
 
-	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
+	payload, err := s.WriteBytes(id, fromSR, append(msgIndexBytes, msgBytes...))
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		References: metadata.References,
 	}
 
-	id, err := s.GetID(topic, protoMsg, info)
+	id, fromSR, err := s.GetID(topic, protoMsg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
+	payload, err := s.WriteBytes(id, fromSR, append(msgIndexBytes, msgBytes...))
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (s *Serializer) resolveDependencies(fileDesc *desc.FileDescriptor, deps map
 	var version = 0
 	if subject != "" {
 		if autoRegister {
-			id, err = s.Client.Register(subject, info, normalize)
+			id, _, err = s.Client.Register(subject, info, normalize)
 			if err != nil {
 				return schemaregistry.SchemaMetadata{}, err
 			}
@@ -511,7 +511,8 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	default:
 		return nil, fmt.Errorf("deserialization target must be a protobuf message")
 	}
-	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+
+	err = proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 	return protoMsg, err
 }
 
@@ -531,8 +532,9 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 
 	var subjects []string
 	if len(info.Subject) > 1 {
-		// if no protobufPackageName msgFulltQlfName will be Mystruct
-		// but in info.Subject, goPackage.Mystruct, only the user know which goPackage
+		// if no protobufPackageName there is no msgFullyQlfName
+		// but in info.Subject it is goPackage.Mystruct
+		// only the user know which one he needs
 		partsMsg := strings.Split(msgFullyQlfName, ".")
 		if len(partsMsg) > 1 {
 			for _, v := range info.Subject {
@@ -542,11 +544,10 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 				}
 			}
 		} else {
-			// return all subjects
 			subjects = info.Subject
 		}
 	} else {
-		subjects = append(subjects, info.Subject[0])
+		subjects = info.Subject
 	}
 
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
@@ -561,7 +562,8 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 	default:
 		return nil, fmt.Errorf("deserialization target must be a protobuf message")
 	}
-	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+
+	err = proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 	return protoMsg, err
 }
 
@@ -592,8 +594,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 			subjects = info.Subject
 		}
 	} else {
-
-		subjects = append(subjects, info.Subject[0])
+		subjects = info.Subject
 	}
 
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
@@ -608,7 +609,8 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	default:
 		return nil, fmt.Errorf("deserialization target must be a protobuf message")
 	}
-	err = proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+
+	err = proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 	return protoMsg, err
 }
 
@@ -624,7 +626,7 @@ func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int
 	if err != nil {
 		return 0, nil, info, err
 	}
-	bytesRead, msgIndexes, err := readMessageIndexes(payload[5:])
+	bytesRead, msgIndexes, err := readMessageIndexes(payload[6:])
 	if err != nil {
 		return 0, nil, info, err
 	}
@@ -660,7 +662,7 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 		return fmt.Errorf("recipient proto object differs from incoming events")
 	}
 
-	return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+	return proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 }
 
 // DeserializeIntoTopicRecordName deserialize bytes with topicRecordNameStrategy
@@ -692,7 +694,6 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
 }
 
-// func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
 func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjects map[string]interface{}, bytesRead int, msgFullyQlfName string) error {
 
 	if msg, ok := subjects[msgFullyQlfName]; ok {
@@ -709,7 +710,7 @@ func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjec
 			return fmt.Errorf("recipient proto object differs from incoming events")
 		}
 
-		return proto.Unmarshal(payload[5+bytesRead:], protoMsg)
+		return proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 	} else {
 		return fmt.Errorf("unfound subject declaration")
 	}

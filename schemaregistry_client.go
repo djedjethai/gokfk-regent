@@ -407,58 +407,6 @@ func (c *client) GetByID(id, fromSR int) (schema SchemaInfo, err error) {
 	return *newInfo, err
 }
 
-// // GetByID returns the schema identified by id
-// // Returns Schema object on success
-// func (c *client) GetByID(id, fromSR int) (schema SchemaInfo, err error) {
-// 	cacheKey := subjectOnlyID{id}
-//
-// 	fmt.Println("SR_client GetByID seeee fromSR===========: ", fromSR)
-//
-// 	c.idToSchemaCacheLock.RLock()
-// 	subjIDPayload, ok := c.idToSchemaCache.Get(cacheKey)
-// 	c.idToSchemaCacheLock.RUnlock()
-//
-// 	if ok {
-// 		return *subjIDPayload.(*SchemaInfo), nil
-// 	}
-//
-// 	metadata := SchemaMetadata{}
-// 	newInfo := &SchemaInfo{}
-// 	c.idToSchemaCacheLock.Lock()
-// 	// another goroutine could have already put it in cache
-// 	subjIDPayload, ok = c.idToSchemaCache.Get(cacheKey)
-// 	if !ok {
-// 		var err error
-// 		err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
-// 		if err == nil {
-//
-// 			newInfo.Schema = metadata.Schema
-// 			newInfo.SchemaType = metadata.SchemaType
-// 			newInfo.References = metadata.References
-//
-// 			// get the schema subject matching the schema id
-// 			var response []string
-// 			err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
-// 			if err == nil {
-// 				fmt.Println("sr_client GetByID cache Subject..............: ", response)
-// 				newInfo.Subject = response
-// 			} else {
-// 				return *newInfo, fmt.Errorf("Invalid server error")
-// 			}
-//
-// 			c.idToSchemaCache.Put(cacheKey, newInfo)
-// 		} else {
-// 			return *newInfo, fmt.Errorf("Invalid server error")
-// 		}
-//
-// 	} else {
-// 		newInfo = subjIDPayload.(*SchemaInfo)
-// 	}
-//
-// 	c.idToSchemaCacheLock.Unlock()
-// 	return *newInfo, err
-// }
-
 // GetBySubjectAndID returns the schema identified by id
 // Returns Schema object on success
 func (c *client) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, err error) {

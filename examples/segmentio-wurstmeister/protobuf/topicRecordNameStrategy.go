@@ -75,6 +75,8 @@ func producer() {
 		Field: "medicin",
 	}
 
+	count := 0
+
 	for {
 		// // return an err as the topic-fullyQualifiedName unmatch the topic
 		// // err := producer.ProduceMessage(msg, topic, "my-second-test.v1.Person")
@@ -88,9 +90,11 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(city, secondTopic, secondTopicSubjectAddress)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
+		if count > 3 {
+			err = producer.ProduceMessage(city, secondTopic, secondTopicSubjectAddress)
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
 		}
 
 		err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
@@ -98,6 +102,7 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
+		count++
 		time.Sleep(2 * time.Second)
 	}
 }

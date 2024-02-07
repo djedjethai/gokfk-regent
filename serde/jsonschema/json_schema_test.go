@@ -501,10 +501,6 @@ func TestJSONSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&map[Value:100]`))
 
-	// wrong topic, works anyway
-	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
-	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&map[Value:100]`))
-
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&map[Size:Extra extra large Toppings:[anchovies mushrooms]]`))
 }
@@ -539,7 +535,7 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
 
-	newobj, err = deser.DeserializeTopicRecordName(topic, bytesInner2)
+	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
 
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
@@ -548,8 +544,9 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
 
 	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "mismatch subject name: invalid-jsonschema.Pizza-value, expected: [topic-jsonschema.Pizza-value]"))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
+
 }
 
 func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) {
@@ -574,7 +571,7 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) 
 	deser.MessageFactory = RegisterTRNMessageFactoryNoReceiver()
 
 	newobj, err := deser.DeserializeTopicRecordName("invalid", bytesObj)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "No matching receiver"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "mismatch subject name: invalid-jsonschema.Pizza-value, expected: [topic-jsonschema.Pizza-value]"))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
