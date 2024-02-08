@@ -85,7 +85,12 @@ func producer() {
 		// 	log.Println("Error producing Message: ", err)
 		// }
 
-		err = producer.ProduceMessage(city, topic, topicSubjectAddress)
+		//err = producer.ProduceMessage(city, topic, topicSubjectAddress)
+		//if err != nil {
+		//	log.Println("Error producing Message: ", err)
+		//}
+
+		err = producer.ProduceMessage(job, topic, "my-topic-proto.Job")
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
@@ -95,11 +100,12 @@ func producer() {
 			if err != nil {
 				log.Println("Error producing Message: ", err)
 			}
-		}
 
-		err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
-		if err != nil {
-			log.Println("Error producing Message: ", err)
+			err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
+
 		}
 
 		count++
@@ -280,6 +286,8 @@ func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{
 			case fmt.Sprintf("%s-value", secondTopicSubjectAddress):
 				return &pb.Address{}, nil
 			case "my-second-proto.Job-value":
+				return &pb.Job{}, nil
+			case "my-topic-proto.Job-value":
 				return &pb.Job{}, nil
 			}
 		}

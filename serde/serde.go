@@ -139,8 +139,12 @@ func TopicNameStrategy(topic string, serdeType Type, fullyQualifiedName ...strin
 		suffix = "-key"
 	}
 
-	if len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
+	if topic != "" && len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
 		return fmt.Sprintf("%s-%s%s", topic, fullyQualifiedName[0], suffix), nil
+	}
+
+	if topic == "" && len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
+		return fmt.Sprintf("%s%s", fullyQualifiedName[0], suffix), nil
 	}
 
 	return topic + suffix, nil

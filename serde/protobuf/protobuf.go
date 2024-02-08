@@ -617,21 +617,33 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 
 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
 
+	msgFullyQlfNameValue, err := s.SubjectNameStrategy("", s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+
+	infSub := info.Subject
 	var subjects []string
-	if len(info.Subject) > 1 {
+	if len(infSub) > 0 {
+		// case package name defined
 		partsMsg := strings.Split(msgFullyQlfName, ".")
 		if len(partsMsg) > 1 {
-			for _, v := range info.Subject {
-				if strings.HasPrefix(v, msgFullyQlfName) {
-					subjects = append(subjects, v)
+			for _, s := range infSub {
+				if s == msgFullyQlfNameValue {
+					subjects = append(subjects, s)
 					break
 				}
 			}
 		} else {
-			subjects = info.Subject
+			// package name is not defined assert it is not possible, return all
+			subjects = infSub
 		}
 	} else {
-		subjects = info.Subject
+		return nil, fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+	}
+
+	if len(subjects) < 1 {
+		return nil, fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
 	}
 
 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
@@ -650,6 +662,71 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	err = proto.Unmarshal(payload[6+bytesRead:], protoMsg)
 	return protoMsg, err
 }
+
+// // DeserializeRecordName deserialize events register with the RecordNameStrategy
+// func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error) {
+// 	if payload == nil {
+// 		return nil, nil
+// 	}
+//
+// 	bytesRead, messageDesc, info, err := s.setMessageDescriptor("", payload)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
+//
+// 	msgFullyQlfNameValue, err := s.SubjectNameStrategy("", s.SerdeType, msgFullyQlfName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	fmt.Println("protobuf.go DeserializeRecordName msgFullyQlfName: ", msgFullyQlfName)
+//
+// 	infSub := info.Subject
+// 	var subjects []string
+// 	if len(infSub) > 0 {
+// 		partsMsg := strings.Split(msgFullyQlfName, ".")
+// 		if len(partsMsg) < 2 {
+// 			// case no namespace defined, update the cache in any case
+// 			subjects, err = s.retryGetSubjects(payload, subjects, msgFullyQlfNameValue)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 		} else {
+// 			// if namespace defined schemas can not own more than one subject
+// 			if len(infSub) > 1 {
+// 				// in case...
+// 				for _, s := range infSub {
+// 					if s == msgFullyQlfNameValue {
+// 						subjects = append(subjects, s)
+// 						break
+// 					}
+// 				}
+// 			} else {
+// 				subjects = infSub
+// 			}
+// 		}
+// 	} else {
+// 		return nil, fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+// 	}
+//
+// 	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	var protoMsg proto.Message
+// 	switch t := msg.(type) {
+// 	case proto.Message:
+// 		protoMsg = t
+// 	default:
+// 		return nil, fmt.Errorf("deserialization target must be a protobuf message")
+// 	}
+//
+// 	err = proto.Unmarshal(payload[6+bytesRead:], protoMsg)
+// 	return protoMsg, err
+// }
 
 func (s *Deserializer) setMessageDescriptor(subject string, payload []byte) (int, *desc.MessageDescriptor, schemaregistry.SchemaInfo, error) {
 
@@ -713,22 +790,65 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 		return err
 	}
 
-	lenSubjects := len(info.Subject)
-	if lenSubjects > 1 {
-		for i, subject := range info.Subject {
+	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
+
+	topicMsgFullyQlfNameValue, err := s.SubjectNameStrategy(topic, s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return err
+	}
+
+	// handle subject
+	var sub []string
+	if len(info.Subject) > 0 {
+		partsMsg := strings.Split(msgFullyQlfName, ".")
+		// we know protobuf have a package declared
+		if len(partsMsg) > 1 {
+			for _, s := range info.Subject {
+				if topicMsgFullyQlfNameValue == s {
+					sub = append(sub, s)
+					break
+				}
+			}
+			// no match subject found
+			if len(sub) == 0 {
+				// retry with updating the cache
+				_, err = s.retryGetSubjects(payload, sub, topicMsgFullyQlfNameValue)
+				if err != nil {
+					return err
+				}
+				if len(sub) == 0 {
+					return fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
+				}
+			}
+		} else {
+			// we know protobuf package is undefined
+			// update the cache in any case and return all subjects
+			sub, err = s.retryGetSubjects(payload, sub, topicMsgFullyQlfNameValue)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		return fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
+	}
+
+	// deserialize payload
+	lenSubjects := len(sub)
+	if lenSubjects > 0 {
+		for i, subject := range sub {
 			err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
 			if err == nil {
 				return err
 			}
 
-			if lenSubjects == i+1 {
-				return fmt.Errorf("unfound subject declaration")
+			if lenSubjects == i+1 && err == nil {
+				err = fmt.Errorf("unfound subject declaration")
 			}
-
 		}
+	} else {
+		return fmt.Errorf("unfound subject declaration")
 	}
-
-	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
+	return err
 }
 
 func deserializeInto(messageDesc *desc.MessageDescriptor, payload []byte, subjects map[string]interface{}, bytesRead int, msgFullyQlfName string) error {
@@ -764,22 +884,56 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		return err
 	}
 
-	lenSubjects := len(info.Subject)
-	if lenSubjects > 1 {
-		for i, subject := range info.Subject {
+	msgFullyQlfName := messageDesc.GetFullyQualifiedName()
+
+	msgFullyQlfNameValue, err := s.SubjectNameStrategy("", s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return err
+	}
+
+	// handle subject
+	infSub := info.Subject
+	var sub []string
+	if len(infSub) > 0 {
+		partsMsg := strings.Split(msgFullyQlfName, ".")
+		if len(partsMsg) > 1 {
+			if len(infSub) > 1 {
+				// in case...
+				for _, s := range infSub {
+					if s == msgFullyQlfNameValue {
+						sub = append(sub, s)
+						break
+					}
+				}
+			} else {
+				sub = infSub
+			}
+		}
+	} else {
+		return fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+	}
+
+	if len(sub) < 1 {
+		return fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+	}
+
+	// deserialize payload
+	lenSubjects := len(sub)
+	if lenSubjects > 0 {
+		for i, subject := range sub {
 			err = deserializeInto(messageDesc, payload, subjects, bytesRead, subject)
 			if err == nil {
 				return err
 			}
 
-			if lenSubjects == i+1 {
-				return fmt.Errorf("unfound subject declaration")
+			if lenSubjects == i+1 && err == nil {
+				err = fmt.Errorf("unfound subject declaration")
 			}
-
 		}
+	} else {
+		return fmt.Errorf("unfound subject declaration")
 	}
-
-	return deserializeInto(messageDesc, payload, subjects, bytesRead, info.Subject[0])
+	return err
 }
 
 func (s *Deserializer) toFileDesc(info schemaregistry.SchemaInfo) (*desc.FileDescriptor, error) {
