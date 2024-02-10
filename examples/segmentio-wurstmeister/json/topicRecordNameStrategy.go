@@ -257,11 +257,9 @@ func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{
 		fmt.Println("The subject: ", subject)
 		fmt.Println("The Name: ", name)
 		switch name {
-		case "my-topic-main.Person":
+		case "main.Person":
 			return &Person{}, nil
-		case "my-topic-main.Address":
-			return &Address{}, nil
-		case "my-second-main.Address":
+		case "main.Address":
 			return &Address{}, nil
 		}
 		return nil, errors.New("No matching receiver")
@@ -280,13 +278,14 @@ func (c *srConsumer) Run() error {
 	var pxTopic = Person{}
 	var addrTopic = Address{}
 	var addrSecondTopic = Address{}
-	msgFQN := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(pxTopic).String())
-	addrFQNTopic := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(addrTopic).String())
-	addrFQNSecondTopic := fmt.Sprintf("%s-%s", secondTopic, reflect.TypeOf(addrSecondTopic).String())
+	msgFQNValue := fmt.Sprintf("%s-%s-value", topic, reflect.TypeOf(pxTopic).String())
+	addrFQNTopicValue := fmt.Sprintf("%s-%s-value", topic, reflect.TypeOf(addrTopic).String())
+	addrFQNSecondTopicValue := fmt.Sprintf("%s-%s-value", secondTopic, reflect.TypeOf(addrSecondTopic).String())
+
 	ref := make(map[string]interface{})
-	ref[msgFQN] = &pxTopic
-	ref[addrFQNTopic] = &addrTopic
-	ref[addrFQNSecondTopic] = &addrSecondTopic
+	ref[msgFQNValue] = &pxTopic
+	ref[addrFQNTopicValue] = &addrTopic
+	ref[addrFQNSecondTopicValue] = &addrSecondTopic
 
 	fmt.Println("start consuming ... !!")
 
@@ -309,16 +308,16 @@ func (c *srConsumer) Run() error {
 			default:
 				fmt.Println("Received a message:", v)
 				// for deserializeInto
-				if _, ok := ref[addrFQNTopic].(*Address); ok {
-					fmt.Println("first topic: ", ref[addrFQNTopic].(*Address).City, " - ", ref[addrFQNTopic].(*Address).Street)
+				if _, ok := ref[addrFQNTopicValue].(*Address); ok {
+					fmt.Println("first topic: ", ref[addrFQNTopicValue].(*Address).City, " - ", ref[addrFQNTopicValue].(*Address).Street)
 				}
 
-				if _, ok := ref[msgFQN].(*Person); ok {
-					fmt.Println("first topic: ", ref[msgFQN].(*Person).Name, " - ", ref[msgFQN].(*Person).Age)
+				if _, ok := ref[msgFQNValue].(*Person); ok {
+					fmt.Println("first topic: ", ref[msgFQNValue].(*Person).Name, " - ", ref[msgFQNValue].(*Person).Age)
 				}
 
-				if _, ok := ref[addrFQNSecondTopic].(*Address); ok {
-					fmt.Println("second topic: ", ref[addrFQNSecondTopic].(*Address).Street)
+				if _, ok := ref[addrFQNSecondTopicValue].(*Address); ok {
+					fmt.Println("second topic: ", ref[addrFQNSecondTopicValue].(*Address).Street)
 				}
 			}
 		case <-ctx.Done():

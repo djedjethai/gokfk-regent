@@ -112,9 +112,11 @@ type JSONLinkedList struct {
 }
 
 const (
-	linkedList    = "jsonschema.LinkedList"
-	pizza         = "jsonschema.Pizza"
-	invalidSchema = "invalidSchema"
+	linkedList      = "jsonschema.LinkedList"
+	linkedListValue = "jsonschema.LinkedList-value"
+	pizza           = "jsonschema.Pizza"
+	pizzaValue      = "jsonschema.Pizza-value"
+	invalidSchema   = "invalidSchema"
 )
 
 type LinkedList struct {
@@ -197,6 +199,20 @@ func RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	}
 }
 
+func RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		for _, s := range subject {
+			switch s {
+			case pizzaValue:
+				return &Pizza{}, nil
+			case linkedListValue:
+				return &LinkedList{}, nil
+			}
+		}
+		return nil, fmt.Errorf("No matching receiver")
+	}
+}
+
 func RegisterMessageFactoryNoReceiver() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
 		return nil, fmt.Errorf("No matching receiver")
@@ -237,6 +253,38 @@ func TestJSONSerdeDeserializeRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("Deserializer configuration", err)
 	deser.Client = ser.Client
 	deser.MessageFactory = RegisterMessageFactory()
+
+	newobj, err := deser.DeserializeRecordName(bytesInner)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
+
+	newobj, err = deser.DeserializeRecordName(bytesObj)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Size, obj.Size))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[0], obj.Toppings[0]))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
+}
+
+func TestJSONSerdeDeserializeRecordNameWithHandlerOnSubject(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeRecordName(&inner, linkedList)
+	serde.MaybeFail("serialization", err)
+
+	bytesObj, err := ser.SerializeRecordName(&obj)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	deser.MessageFactory = RegisterMessageFactoryOnSubject()
 
 	newobj, err := deser.DeserializeRecordName(bytesInner)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
@@ -324,8 +372,8 @@ func TestJSONSerdeDeserializeIntoRecordName(t *testing.T) {
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
-	receivers[linkedList] = &LinkedList{}
-	receivers[pizza] = &Pizza{}
+	receivers[linkedListValue] = &LinkedList{}
+	receivers[pizzaValue] = &Pizza{}
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
 
@@ -333,11 +381,11 @@ func TestJSONSerdeDeserializeIntoRecordName(t *testing.T) {
 	deser.Client = ser.Client
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
-	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[linkedList].(*LinkedList).Value), 100))
+	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[linkedListValue].(*LinkedList).Value), 100))
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizza].(*Pizza).Toppings[0], obj.Toppings[0]))
-	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizza].(*Pizza).Toppings[1], obj.Toppings[1]))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizzaValue].(*Pizza).Toppings[0], obj.Toppings[0]))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[pizzaValue].(*Pizza).Toppings[1], obj.Toppings[1]))
 }
 
 func TestJSONSerdeDeserializeIntoRecordNameWithInvalidSchema(t *testing.T) {
@@ -391,8 +439,8 @@ func TestJSONSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
-	receivers[pizza] = &LinkedList{}
-	receivers[linkedList] = ""
+	receivers[pizzaValue] = &LinkedList{}
+	receivers[linkedListValue] = ""
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
 
@@ -400,7 +448,7 @@ func TestJSONSerdeDeserializeIntoRecordNameWithInvalidReceiver(t *testing.T) {
 	deser.Client = ser.Client
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", receivers[pizza]), `&{0}`))
+	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", receivers[pizzaValue]), `&{0}`))
 
 	err = deser.DeserializeIntoRecordName(receivers, bytesInner)
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "json: Unmarshal(non-pointer string)"))
@@ -442,10 +490,27 @@ func RegisterTRNMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
 		// in json and avro we can switch on the name as the fullyQName is register
 		switch name {
-		case topicLinkedList, secondLinkedList:
+		// case topicLinkedList, secondLinkedList:
+		case linkedList:
 			return &LinkedList{}, nil
-		case topicPizza, secondPizza:
+		case pizza:
 			return &Pizza{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+func RegisterTRNMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subjects []string, name string) (interface{}, error) {
+		// in json and avro we can switch on the name as the fullyQName is register
+		for _, s := range subjects {
+			switch s {
+			// case topicLinkedList, secondLinkedList:
+			case topicLinkedListValue, secondLinkedListValue:
+				return &LinkedList{}, nil
+			case topicPizzaValue, secondPizzaValue:
+				return &Pizza{}, nil
+			}
 		}
 		return nil, errors.New("No matching receiver")
 	}
@@ -460,9 +525,9 @@ func RegisterTRNMessageFactoryNoReceiver() func([]string, string) (interface{}, 
 func RegisterTRNMessageFactoryInvalidReceiver() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
 		switch name {
-		case topicLinkedList, secondLinkedList:
+		case linkedList:
 			return "", nil
-		case topicPizza, secondPizza:
+		case pizza:
 			return &LinkedList{}, nil
 		}
 		return nil, errors.New("No matching receiver")
@@ -544,9 +609,51 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
 
 	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "mismatch subject name: invalid-jsonschema.Pizza-value, expected: [topic-jsonschema.Pizza-value]"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: invalid-jsonschema.Pizza-value"))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
+}
 
+func TestJSONSerdeDeserializeTopicRecordNameWithHandlerOnSubject(t *testing.T) {
+	serde.MaybeFail = serde.InitFailFunc(t)
+	var err error
+	conf := schemaregistry.NewConfig("mock://")
+
+	client, err := schemaregistry.NewClient(conf)
+	serde.MaybeFail("Schema Registry configuration", err)
+
+	ser, err := NewSerializer(client, serde.ValueSerde, NewSerializerConfig())
+	serde.MaybeFail("Serializer configuration", err)
+
+	bytesInner, err := ser.SerializeTopicRecordName(topic, &inner, topicLinkedList)
+	serde.MaybeFail("serialization", err)
+
+	// not that it does not matter &inner or inner
+	bytesInner2, err := ser.SerializeTopicRecordName(second, inner, secondLinkedList)
+	serde.MaybeFail("serialization", err)
+
+	bytesObj, err := ser.SerializeTopicRecordName(topic, obj, topicPizza)
+	serde.MaybeFail("serialization", err)
+
+	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
+
+	serde.MaybeFail("Deserializer configuration", err)
+	deser.Client = ser.Client
+	deser.MessageFactory = RegisterTRNMessageFactoryOnSubject()
+
+	newobj, err := deser.DeserializeTopicRecordName(topic, bytesInner)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
+
+	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*LinkedList).Value, inner.Value))
+
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Size, obj.Size))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[0], obj.Toppings[0]))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*Pizza).Toppings[1], obj.Toppings[1]))
+
+	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesObj)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: invalid-jsonschema.Pizza-value"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
 func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) {
@@ -571,7 +678,7 @@ func TestJSONSerdeDeserializeTopicRecordNameWithHandlerNoReceiver(t *testing.T) 
 	deser.MessageFactory = RegisterTRNMessageFactoryNoReceiver()
 
 	newobj, err := deser.DeserializeTopicRecordName("invalid", bytesObj)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "mismatch subject name: invalid-jsonschema.Pizza-value, expected: [topic-jsonschema.Pizza-value]"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: invalid-jsonschema.Pizza-value"))
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
@@ -630,9 +737,9 @@ func TestJSONSerdeDeserializeIntoTopicRecordName(t *testing.T) {
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
-	receivers[topicLinkedList] = &LinkedList{}
-	receivers[secondLinkedList] = &LinkedList{}
-	receivers[topicPizza] = &Pizza{}
+	receivers[topicLinkedListValue] = &LinkedList{}
+	receivers[secondLinkedListValue] = &LinkedList{}
+	receivers[topicPizzaValue] = &Pizza{}
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
 
@@ -640,14 +747,14 @@ func TestJSONSerdeDeserializeIntoTopicRecordName(t *testing.T) {
 	deser.Client = ser.Client
 
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesInner)
-	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[topicLinkedList].(*LinkedList).Value), 100))
+	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[topicLinkedListValue].(*LinkedList).Value), 100))
 
 	err = deser.DeserializeIntoTopicRecordName(second, receivers, bytesInner2)
-	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[secondLinkedList].(*LinkedList).Value), 100))
+	serde.MaybeFail("deserialization", err, serde.Expect(int(receivers[secondLinkedListValue].(*LinkedList).Value), 100))
 
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizza].(*Pizza).Toppings[0], obj.Toppings[0]))
-	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizza].(*Pizza).Toppings[1], obj.Toppings[1]))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizzaValue].(*Pizza).Toppings[0], obj.Toppings[0]))
+	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizzaValue].(*Pizza).Toppings[1], obj.Toppings[1]))
 }
 
 func TestJSONSerdeDeserializeIntoTopicRecordNameWithInvalidSchema(t *testing.T) {
@@ -701,8 +808,8 @@ func TestJSONSerdeDeserializeIntoTopicRecordNameWithInvalidReceiver(t *testing.T
 	serde.MaybeFail("serialization", err)
 
 	var receivers = make(map[string]interface{})
-	receivers[topicPizza] = &LinkedList{}
-	receivers[topicLinkedList] = ""
+	receivers[topicPizzaValue] = &LinkedList{}
+	receivers[topicLinkedListValue] = ""
 
 	deser, err := NewDeserializer(client, serde.ValueSerde, NewDeserializerConfig())
 
@@ -710,7 +817,7 @@ func TestJSONSerdeDeserializeIntoTopicRecordNameWithInvalidReceiver(t *testing.T
 	deser.Client = ser.Client
 
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", receivers[topicPizza]), `&{0}`))
+	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", receivers[topicPizzaValue]), `&{0}`))
 
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesInner)
 	serde.MaybeFail("deserialization", serde.Expect(err.Error(), "json: Unmarshal(non-pointer string)"))
