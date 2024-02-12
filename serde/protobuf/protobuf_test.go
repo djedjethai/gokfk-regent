@@ -743,15 +743,16 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
+	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[0], recPiz.Toppings[0]))
+	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[1], recPiz.Toppings[1]))
+
 	// wrong topic return an error
 	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
 	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
 	serde.MaybeFail("deserialization", serde.Expect(newobj, nil))
 
-	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[0], recPiz.Toppings[0]))
-	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[1], recPiz.Toppings[1]))
 }
 
 // Protobuf have no packageName, gokfk-regent will get the goPackageName: protorecordname
@@ -864,15 +865,15 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithHandlerAndPackageName(t *tes
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
-	// wrong topic return an error
-	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
-	serde.MaybeFail("deserialization", serde.Expect(newobj, nil))
-
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[0], recPiz.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[1], recPiz.Toppings[1]))
+
+	// wrong topic return an error
+	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
+	serde.MaybeFail("deserialization", serde.Expect(newobj, nil))
 }
 
 // Handler function is register RegisterTRNMessageFactory() and protobuf have a packageName
@@ -911,15 +912,15 @@ func TestProtobufSerdeDeserializeTopicRecordNameWithHandlerAndPackageNameOnSubje
 	newobj, err = deser.DeserializeTopicRecordName(second, bytesInner2)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.LinkedList).Value, recLinked.Value))
 
-	// wrong topic return an error
-	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
-	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
-	serde.MaybeFail("deserialization", serde.Expect(newobj, nil))
-
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Size, recPiz.Size))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[0], recPiz.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(newobj.(*recordname.Pizza).Toppings[1], recPiz.Toppings[1]))
+
+	// wrong topic return an error
+	newobj, err = deser.DeserializeTopicRecordName("unknown", bytesInner2)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: unknown-recordname.LinkedList-value"))
+	serde.MaybeFail("deserialization", serde.Expect(newobj, nil))
 }
 
 // Handler function is register RegisterTRNMessageFactoryInvalidReceiver()

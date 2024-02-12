@@ -629,8 +629,18 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 				break
 			}
 		}
+		// no match subject found
+		if len(subjects) == 0 {
+			// retry with updating the cache
+			_, err = s.retryGetSubjects(payload, subjects, msgFullyQlfNameValue)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 	} else {
 		// packagename is not defined, assert it is not possible, return all
+		// NOTE the downside, we do not refresh the cache
 		subjects = infSub
 	}
 
@@ -827,7 +837,16 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 				break
 			}
 		}
+		// no match subject found
+		if len(sub) == 0 {
+			// retry with updating the cache
+			_, err = s.retryGetSubjects(payload, sub, msgFullyQlfNameValue)
+			if err != nil {
+				return err
+			}
+		}
 	} else {
+		// NOTE the downside, we do not refresh the cache
 		sub = infSub
 	}
 

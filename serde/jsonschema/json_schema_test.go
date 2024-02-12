@@ -568,6 +568,10 @@ func TestJSONSerdeDeserializeTopicRecordNameWithoutHandler(t *testing.T) {
 
 	newobj, err = deser.DeserializeTopicRecordName(topic, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(fmt.Sprintf("%v", newobj), `&map[Size:Extra extra large Toppings:[anchovies mushrooms]]`))
+
+	newobj, err = deser.DeserializeTopicRecordName("invalid", bytesInner2)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: invalid-jsonschema.LinkedList-value"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
 func TestJSONSerdeDeserializeTopicRecordNameWithHandler(t *testing.T) {
@@ -755,6 +759,10 @@ func TestJSONSerdeDeserializeIntoTopicRecordName(t *testing.T) {
 	err = deser.DeserializeIntoTopicRecordName(topic, receivers, bytesObj)
 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizzaValue].(*Pizza).Toppings[0], obj.Toppings[0]))
 	serde.MaybeFail("deserialization", err, serde.Expect(receivers[topicPizzaValue].(*Pizza).Toppings[1], obj.Toppings[1]))
+
+	newobj, err := deser.DeserializeTopicRecordName("invalid", bytesObj)
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(err.Error(), "no subject found for: invalid-jsonschema.Pizza-value"))
+	serde.MaybeFail("deserializeInvalidReceiver", serde.Expect(newobj, nil))
 }
 
 func TestJSONSerdeDeserializeIntoTopicRecordNameWithInvalidSchema(t *testing.T) {

@@ -454,6 +454,16 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 			break
 		}
 	}
+	if len(subjects) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, subjects, msgFullyQlfNameValue)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return nil, fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+		}
+	}
 
 	if s.validate {
 		// Need to unmarshal to pure interface
@@ -589,6 +599,16 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		if s == msgFullyQlfNameValue {
 			sub = append(sub, s)
 			break
+		}
+	}
+	if len(sub) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, sub, msgFullyQlfNameValue)
+		if err != nil {
+			return err
+		}
+		if len(subjects) == 0 {
+			return fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
 		}
 	}
 
