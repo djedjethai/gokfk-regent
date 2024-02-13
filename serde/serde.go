@@ -129,52 +129,64 @@ func (s *BaseDeserializer) ConfigureDeserializer(client schemaregistry.Client, s
 }
 
 // SubjectNameStrategyFunc determines the subject for the given parameters
-type SubjectNameStrategyFunc func(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error)
+// type SubjectNameStrategyFunc func(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error)
+type SubjectNameStrategyFunc func(topic string, serdeType Type, fullyQualifiedName ...string) (string, error)
 
 // TopicNameStrategy creates a subject name by appending -[key|value] to the topic name.
-func TopicNameStrategy(topic string, serdeType Type, schema schemaregistry.SchemaInfo) (string, error) {
+func TopicNameStrategy(topic string, serdeType Type, fullyQualifiedName ...string) (string, error) {
 	suffix := "-value"
 	if serdeType == KeySerde {
 		suffix = "-key"
 	}
+
+	if topic != "" && len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
+		return fmt.Sprintf("%s-%s%s", topic, fullyQualifiedName[0], suffix), nil
+	}
+
+	if topic == "" && len(fullyQualifiedName) > 0 && fullyQualifiedName[0] != "" {
+		return fmt.Sprintf("%s%s", fullyQualifiedName[0], suffix), nil
+	}
+
 	return topic + suffix, nil
 }
 
 // GetID returns a schema ID for the given schema
-func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregistry.SchemaInfo) (int, error) {
+func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregistry.SchemaInfo) (int, int, error) {
 	autoRegister := s.Conf.AutoRegisterSchemas
 	useSchemaID := s.Conf.UseSchemaID
 	useLatest := s.Conf.UseLatestVersion
 	normalizeSchema := s.Conf.NormalizeSchemas
 
 	var id = -1
-	fullSubject, err := s.SubjectNameStrategy(subject, s.SerdeType, info)
+	fullSubject, err := s.SubjectNameStrategy(subject, s.SerdeType)
 	if err != nil {
-		return -1, err
+		return -1, 0, err
 	}
 
+	var fromSR int = 0
 	if autoRegister {
-		id, err = s.Client.Register(fullSubject, info, normalizeSchema)
+		id, fromSR, err = s.Client.Register(fullSubject, info, normalizeSchema)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 	} else if useSchemaID >= 0 {
+		// TODO see fromSR
 		info, err = s.Client.GetBySubjectAndID(fullSubject, useSchemaID)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 
 		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 		if id != useSchemaID {
-			return -1, fmt.Errorf("failed to match schema ID (%d != %d)", id, useSchemaID)
+			return -1, fromSR, fmt.Errorf("failed to match schema ID (%d != %d)", id, useSchemaID)
 		}
 	} else if useLatest {
 		metadata, err := s.Client.GetLatestSchemaMetadata(fullSubject)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 
 		info = schemaregistry.SchemaInfo{
@@ -185,20 +197,20 @@ func (s *BaseSerializer) GetID(subject string, msg interface{}, info schemaregis
 
 		id, err = s.Client.GetID(fullSubject, info, false)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 	} else {
 		id, err = s.Client.GetID(fullSubject, info, normalizeSchema)
 		if err != nil {
-			return -1, err
+			return -1, fromSR, err
 		}
 	}
 
-	return id, nil
+	return id, fromSR, nil
 }
 
 // WriteBytes writes the serialized payload prepended by the magicByte
-func (s *BaseSerializer) WriteBytes(id int, msgBytes []byte) ([]byte, error) {
+func (s *BaseSerializer) WriteBytes(id int, fromSR int, msgBytes []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	err := buf.WriteByte(magicByte)
 	if err != nil {
@@ -210,6 +222,19 @@ func (s *BaseSerializer) WriteBytes(id int, msgBytes []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// make sure fromSR is 0 or 1
+	if fromSR != 1 && fromSR != 0 {
+		fromSR = 0
+	}
+
+	// Add fromSR byte, fromSR == 1 means id do not come from the cache
+	fromSRByte := byte(fromSR)
+	err = buf.WriteByte(fromSRByte)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = buf.Write(msgBytes)
 	if err != nil {
 		return nil, err
@@ -226,14 +251,15 @@ func (s *BaseDeserializer) GetSchema(subject string, payload []byte) (schemaregi
 	id := binary.BigEndian.Uint32(payload[1:5])
 	if subject != "" {
 		var err error
-		subject, err = s.SubjectNameStrategy(subject, s.SerdeType, info)
+		subject, err = s.SubjectNameStrategy(subject, s.SerdeType)
 		if err != nil {
 			return info, err
 		}
 
 		return s.Client.GetBySubjectAndID(subject, int(id))
 	} else {
-		return s.Client.GetByID(int(id))
+		fromSR := payload[5]
+		return s.Client.GetByID(int(id), int(fromSR))
 	}
 }
 

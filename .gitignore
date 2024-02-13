@@ -6,7 +6,8 @@ examples/confluent/json/go.mod
 examples/confluent/json/go.sum
 examples/confluent/protobuf/go.sum
 examples/confluent/protobuf/go.mod
-
+examples/confluent/protobuf1
+examples/confluent/protobuf2
 
 examples/segmentio-wurstmeister/kafka
 examples/segmentio-wurstmeister/avro/go.mod

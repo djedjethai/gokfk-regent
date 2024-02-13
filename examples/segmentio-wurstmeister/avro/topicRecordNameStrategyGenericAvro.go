@@ -248,14 +248,23 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // RegisterMessageFactory will overwrite the default one
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
-		fmt.Println("avro/topicRecordNameStrat RegisterMessageFactory subject: ", subject)
-		fmt.Println("avro/topicRecordNameStrat RegisterMessageFactory name: ", name)
 		switch name {
-		case "my-topic-main.Person":
+		case "main.Person":
 			return &Person{}, nil
-		case "my-topic-main.Address":
+		case "main.Address":
 			return &Address{}, nil
-		case "my-second-main.Address":
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+// same as RegisterMessageFactory() but use the subject
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		switch subject[0] {
+		case "my-topic-main.Person-value":
+			return &Person{}, nil
+		case "my-topic-main.Address-value", "my-second-main.Address-value":
 			return &Address{}, nil
 		}
 		return nil, errors.New("No matching receiver")
@@ -284,11 +293,11 @@ func (c *srConsumer) Run() error {
 
 	msg := make(chan interface{})
 
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
-	go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.reader, ref)
+	// go c.getResponseIntoTopicRecordName(ctx, msg, c.secondReader, ref)
 
-	// go c.getResponseTopicRecordName(ctx, msg, c.reader)
-	// go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
+	go c.getResponseTopicRecordName(ctx, msg, c.reader)
+	go c.getResponseTopicRecordName(ctx, msg, c.secondReader)
 
 	fmt.Println("start consuming ... !!")
 	for {

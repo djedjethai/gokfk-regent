@@ -276,10 +276,6 @@ func (c *srConsumer) Run(messagesType []protoreflect.MessageType) error {
 	// meaning that the *pb.Person's schema will only be registered once.
 	// This schema will have multiple subjects, such as:
 	// PROTOBUF [] [my-topic-test.v1.Person-value second-test.v1.Person-value]
-	// The gokfk-regent loop on the subjects until it finds the matching one.
-	// So, if 'subjects' is used for both goroutines,
-	// then the deserialized object will always be subjects[my-topic-test.v1.Person-value],
-	// as it always comes first.
 	subjects2[secondSubjectPersonValue] = &pb.Person{}
 
 	fmt.Println("start consuming ... !!")

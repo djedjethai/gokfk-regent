@@ -209,8 +209,8 @@ var _ Client = new(client)
 // The Schema Registry's REST interface is further explained in Confluent's Schema Registry API documentation
 // https://github.com/confluentinc/schema-registry/blob/master/client/src/main/java/io/confluent/kafka/schemaregistry/client/SchemaRegistryClient.java
 type Client interface {
-	Register(subject string, schema SchemaInfo, normalize bool) (id int, err error)
-	GetByID(id int) (schema SchemaInfo, err error)
+	Register(subject string, schema SchemaInfo, normalize bool) (id int, fromSR int, err error)
+	GetByID(id, fromSR int) (schema SchemaInfo, err error)
 	GetBySubjectAndID(subject string, id int) (schema SchemaInfo, err error)
 	GetID(subject string, schema SchemaInfo, normalize bool) (id int, err error)
 	GetLatestSchemaMetadata(subject string) (SchemaMetadata, error)
@@ -289,10 +289,10 @@ func NewClient(conf *Config) (Client, error) {
 }
 
 // Register registers Schema aliased with subject
-func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id int, err error) {
+func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id int, fromSR int, err error) {
 	schemaJSON, err := schema.MarshalJSON()
 	if err != nil {
-		return -1, err
+		return -1, 0, err
 	}
 
 	cacheKey := subjectJSON{
@@ -304,7 +304,7 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 	idValue, ok := c.schemaToIdCache.Get(cacheKey)
 	c.schemaToIdCacheLock.RUnlock()
 	if ok {
-		return idValue.(int), nil
+		return idValue.(int), 0, nil
 	}
 
 	metadata := SchemaMetadata{
@@ -326,17 +326,60 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 		} else {
 			metadata.ID = -1
 		}
+		fmt.Println("SR_client register update the cache................")
+		fromSR = 1
 	} else {
 		metadata.ID = idValue.(int)
+		fromSR = 0
 	}
 	c.schemaToIdCacheLock.Unlock()
-	return metadata.ID, err
+	return metadata.ID, fromSR, err
+}
+
+func (c *client) reqSchemaRegistryMetadataFromID(id int, cacheKey subjectOnlyID, newInfo *SchemaInfo) (err error) {
+	metadata := SchemaMetadata{}
+	err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
+	if err == nil {
+
+		newInfo.Schema = metadata.Schema
+		newInfo.SchemaType = metadata.SchemaType
+		newInfo.References = metadata.References
+
+		// get the schema subject matching the schema id
+		var response []string
+		err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
+		if err == nil {
+			fmt.Println("sr_client GetByID cache response from SR..............: ", response)
+			newInfo.Subject = response
+			return err
+		} else {
+			return fmt.Errorf("Invalid server error")
+		}
+
+	} else {
+		return fmt.Errorf("Invalid server error")
+	}
 }
 
 // GetByID returns the schema identified by id
 // Returns Schema object on success
-func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
+func (c *client) GetByID(id, fromSR int) (schema SchemaInfo, err error) {
 	cacheKey := subjectOnlyID{id}
+	newInfo := &SchemaInfo{}
+
+	// if producer got the schemaID from the SR, update the cache
+	fmt.Println("SR_client GetByID seeee fromSR===========: ", fromSR)
+	if fromSR == 1 {
+		c.idToSchemaCacheLock.Lock()
+		err = c.reqSchemaRegistryMetadataFromID(id, cacheKey, newInfo)
+		if err != nil {
+			return *newInfo, err
+		}
+		c.idToSchemaCache.Put(cacheKey, newInfo)
+		c.idToSchemaCacheLock.Unlock()
+
+		return *newInfo, err
+	}
 
 	c.idToSchemaCacheLock.RLock()
 	subjIDPayload, ok := c.idToSchemaCache.Get(cacheKey)
@@ -346,34 +389,16 @@ func (c *client) GetByID(id int) (schema SchemaInfo, err error) {
 		return *subjIDPayload.(*SchemaInfo), nil
 	}
 
-	metadata := SchemaMetadata{}
-	newInfo := &SchemaInfo{}
 	c.idToSchemaCacheLock.Lock()
 	// another goroutine could have already put it in cache
 	subjIDPayload, ok = c.idToSchemaCache.Get(cacheKey)
 	if !ok {
-		var err error
-		err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
-		if err == nil {
-
-			newInfo.Schema = metadata.Schema
-			newInfo.SchemaType = metadata.SchemaType
-			newInfo.References = metadata.References
-
-			// get the schema subject matching the schema id
-			var response []string
-			err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
-			if err == nil {
-				newInfo.Subject = response
-			} else {
-				return *newInfo, fmt.Errorf("Invalid server error")
-			}
-
-			c.idToSchemaCache.Put(cacheKey, newInfo)
-		} else {
-			return *newInfo, fmt.Errorf("Invalid server error")
+		err = c.reqSchemaRegistryMetadataFromID(id, cacheKey, newInfo)
+		if err != nil {
+			c.idToSchemaCacheLock.Unlock()
+			return *newInfo, err
 		}
-
+		c.idToSchemaCache.Put(cacheKey, newInfo)
 	} else {
 		newInfo = subjIDPayload.(*SchemaInfo)
 	}
@@ -405,14 +430,14 @@ func (c *client) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, e
 		if len(subject) > 0 {
 			err = c.restService.handleRequest(newRequest("GET", schemasBySubject, nil, id, url.QueryEscape(subject)), &metadata)
 		} else {
+			// NOTE kind of useless... see to remove that
 			err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
 		}
 		if err == nil {
-			// newInfo = &SchemaInfo{
 			newInfo.Schema = metadata.Schema
 			newInfo.SchemaType = metadata.SchemaType
 			newInfo.References = metadata.References
-			//}
+
 			c.idToSchemaCache.Put(cacheKey, newInfo)
 		}
 	} else {

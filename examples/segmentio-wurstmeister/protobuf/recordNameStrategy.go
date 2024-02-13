@@ -231,8 +231,6 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // In this case &pb.Person{} is the "msg" at "msg, err := c.deserializer.DeserializeRecordName()"
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subjects)
-		fmt.Println("The name: ", name)
 		switch name {
 		case subjectPerson:
 			return &pb.Person{}, nil

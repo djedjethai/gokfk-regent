@@ -61,21 +61,23 @@ func producer() {
 		log.Fatal("Can not create producer: ", err)
 	}
 
-	msg := Person{
-		Name: "robert",
-		Age:  23,
-	}
+	// msg := Person{
+	// 	Name: "robert",
+	// 	Age:  23,
+	// }
 
 	addr := Address{
 		Street: "myStreet",
 		City:   "Bangkok",
 	}
 
+	count := 0
+
 	for {
-		err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
+		// err := producer.ProduceMessage(msg, topic, reflect.TypeOf(msg).String())
+		// if err != nil {
+		// 	log.Println("Error producing Message: ", err)
+		// }
 
 		err = producer.ProduceMessage(addr, topic, "main.Address")
 		// err = producer.ProduceMessage(addr, topic, reflect.TypeOf(addr).String())
@@ -83,10 +85,13 @@ func producer() {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
-		if err != nil {
-			log.Println("Error producing Message: ", err)
+		if count > 3 {
+			err = producer.ProduceMessage(addr, secondTopic, reflect.TypeOf(addr).String())
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
 		}
+		count++
 
 		time.Sleep(2 * time.Second)
 	}
@@ -249,14 +254,23 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // RegisterMessageFactory will overwrite the default one
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subject)
-		fmt.Println("The Name: ", name)
 		switch name {
-		case "my-topic-main.Person":
+		case "main.Person":
 			return &Person{}, nil
-		case "my-topic-main.Address":
+		case "main.Address":
 			return &Address{}, nil
-		case "my-second-main.Address":
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+// same as RegisterMessageFactory() but using subject
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		switch subject[0] {
+		case "my-topic-main.Person-value", "my-second-main.Person-value":
+			return &Person{}, nil
+		case "my-topic-main.Address-value", "my-second-main.Address-value":
 			return &Address{}, nil
 		}
 		return nil, errors.New("No matching receiver")
@@ -275,13 +289,14 @@ func (c *srConsumer) Run() error {
 	var pxTopic = Person{}
 	var addrTopic = Address{}
 	var addrSecondTopic = Address{}
-	msgFQN := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(pxTopic).String())
-	addrFQNTopic := fmt.Sprintf("%s-%s", topic, reflect.TypeOf(addrTopic).String())
-	addrFQNSecondTopic := fmt.Sprintf("%s-%s", secondTopic, reflect.TypeOf(addrSecondTopic).String())
+	msgFQNValue := fmt.Sprintf("%s-%s-value", topic, reflect.TypeOf(pxTopic).String())
+	addrFQNTopicValue := fmt.Sprintf("%s-%s-value", topic, reflect.TypeOf(addrTopic).String())
+	addrFQNSecondTopicValue := fmt.Sprintf("%s-%s-value", secondTopic, reflect.TypeOf(addrSecondTopic).String())
+
 	ref := make(map[string]interface{})
-	ref[msgFQN] = &pxTopic
-	ref[addrFQNTopic] = &addrTopic
-	ref[addrFQNSecondTopic] = &addrSecondTopic
+	ref[msgFQNValue] = &pxTopic
+	ref[addrFQNTopicValue] = &addrTopic
+	ref[addrFQNSecondTopicValue] = &addrSecondTopic
 
 	fmt.Println("start consuming ... !!")
 
@@ -304,16 +319,16 @@ func (c *srConsumer) Run() error {
 			default:
 				fmt.Println("Received a message:", v)
 				// for deserializeInto
-				if _, ok := ref[addrFQNTopic].(*Address); ok {
-					fmt.Println("first topic: ", ref[addrFQNTopic].(*Address).City, " - ", ref[addrFQNTopic].(*Address).Street)
+				if _, ok := ref[addrFQNTopicValue].(*Address); ok {
+					fmt.Println("first topic: ", ref[addrFQNTopicValue].(*Address).City, " - ", ref[addrFQNTopicValue].(*Address).Street)
 				}
 
-				if _, ok := ref[msgFQN].(*Person); ok {
-					fmt.Println("first topic: ", ref[msgFQN].(*Person).Name, " - ", ref[msgFQN].(*Person).Age)
+				if _, ok := ref[msgFQNValue].(*Person); ok {
+					fmt.Println("first topic: ", ref[msgFQNValue].(*Person).Name, " - ", ref[msgFQNValue].(*Person).Age)
 				}
 
-				if _, ok := ref[addrFQNSecondTopic].(*Address); ok {
-					fmt.Println("second topic: ", ref[addrFQNSecondTopic].(*Address).Street)
+				if _, ok := ref[addrFQNSecondTopicValue].(*Address); ok {
+					fmt.Println("second topic: ", ref[addrFQNSecondTopicValue].(*Address).Street)
 				}
 			}
 		case <-ctx.Done():

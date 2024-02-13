@@ -75,6 +75,8 @@ func producer() {
 		Field: "medicin",
 	}
 
+	count := 0
+
 	for {
 		// // return an err as the topic-fullyQualifiedName unmatch the topic
 		// // err := producer.ProduceMessage(msg, topic, "my-second-test.v1.Person")
@@ -83,21 +85,30 @@ func producer() {
 		// 	log.Println("Error producing Message: ", err)
 		// }
 
-		err = producer.ProduceMessage(city, topic, topicSubjectAddress)
+		//err = producer.ProduceMessage(city, topic, topicSubjectAddress)
+		//if err != nil {
+		//	log.Println("Error producing Message: ", err)
+		//}
+
+		err = producer.ProduceMessage(job, topic, "my-topic-proto.Job")
 		if err != nil {
 			log.Println("Error producing Message: ", err)
 		}
 
-		err = producer.ProduceMessage(city, secondTopic, secondTopicSubjectAddress)
-		if err != nil {
-			log.Println("Error producing Message: ", err)
+		if count > 3 {
+			err = producer.ProduceMessage(city, secondTopic, secondTopicSubjectAddress)
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
+
+			err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
+			if err != nil {
+				log.Println("Error producing Message: ", err)
+			}
+
 		}
 
-		err = producer.ProduceMessage(job, secondTopic, "my-second-proto.Job")
-		if err != nil {
-			log.Println("Error producing Message: ", err)
-		}
-
+		count++
 		time.Sleep(2 * time.Second)
 	}
 }
@@ -264,8 +275,6 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // In this case &pb.Person{} is the "msg" at "msg, err := c.deserializer.DeserializeRecordName()"
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subjects) // topic-fullyQualifiedName-key/value
-		fmt.Println("The name: ", name)        // fullyQualifiedName
 		for _, subject := range subjects {
 			switch subject {
 			case fmt.Sprintf("%s-value", topicSubjectPerson):
@@ -275,6 +284,8 @@ func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{
 			case fmt.Sprintf("%s-value", secondTopicSubjectAddress):
 				return &pb.Address{}, nil
 			case "my-second-proto.Job-value":
+				return &pb.Job{}, nil
+			case "my-topic-proto.Job-value":
 				return &pb.Job{}, nil
 			}
 		}

@@ -271,6 +271,23 @@ func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{
 	}
 }
 
+// same a RegisterMessageFactory() but using the subject
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		switch subject[0] {
+		case "main.Person-value":
+			return &Person{}, nil
+		case "main.Address-value":
+			return &Address{}, nil
+		case "main.Embedded-value":
+			return &Embedded{}, nil
+		case "main.EmbeddedPax-value":
+			return &EmbeddedPax{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
 // Run consumer
 // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
 func (c *srConsumer) Run(topic string) error {

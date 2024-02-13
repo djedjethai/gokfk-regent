@@ -78,7 +78,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(topic, msg, info)
+	id, fromSR, err := s.GetID(topic, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *Serializer) Serialize(topic string, msg interface{}) ([]byte, error) {
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s *Serializer) SerializeRecordName(msg interface{}, subject ...string) ([]
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +217,17 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 	msgFQN := reflect.TypeOf(msg).String()
 	msgFQN = strings.TrimLeft(msgFQN, "*") // in case
 
+	// Marshal the schema into a JSON []byte
+	jschema := jsonschema.Reflect(msg)
+	schemaBytes, err := json.Marshal(jschema)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
+	if err != nil {
+		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
+	}
+
 	// add topic to the fullyQualifiedName
 	msgFQN = fmt.Sprintf("%s-%s", topic, msgFQN)
 
@@ -226,25 +237,12 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 		}
 	}
 
-	jschema := jsonschema.Reflect(msg)
-
-	// Marshal the schema into a JSON []byte
-	schemaBytes, err := json.Marshal(jschema)
-	if err != nil {
-		return nil, err
-	}
-
-	raw, err := s.addFullyQualifiedNameToSchema(schemaBytes, msgFQN)
-	if err != nil {
-		log.Println("Error marshaling JSON when adding fullyQualifiedName:", err)
-	}
-
 	info := schemaregistry.SchemaInfo{
 		Schema:     string(raw),
 		SchemaType: "JSON",
 	}
 
-	id, err := s.GetID(msgFQN, msg, info)
+	id, fromSR, err := s.GetID(msgFQN, msg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +266,7 @@ func (s *Serializer) SerializeTopicRecordName(topic string, msg interface{}, sub
 			return nil, err
 		}
 	}
-	payload, err := s.WriteBytes(id, raw)
+	payload, err := s.WriteBytes(id, fromSR, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +300,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +313,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 			return nil, err
 		}
 	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, info)
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +324,7 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 		return nil, err
 	}
 
-	err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +333,93 @@ func (s *Deserializer) Deserialize(topic string, payload []byte) (interface{}, e
 
 // DeserializeTopicRecordName deserialise bytes
 func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) (interface{}, error) {
-	return s.DeserializeRecordName(payload)
+	if payload == nil {
+		return nil, nil
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	msgFullyQlfName := fmt.Sprintf("%s.%s", namespace, name)
+
+	topicMsgFullyQlfNameValue, err := s.SubjectNameStrategy(topic, s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+
+	// loop on info.Subject to assert the subject name
+	var subjects []string
+	for _, v := range info.Subject {
+		if string(v) == topicMsgFullyQlfNameValue {
+			subjects = append(subjects, v)
+			break
+		}
+	}
+	if len(subjects) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, subjects, topicMsgFullyQlfNameValue)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return nil, fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
+		}
+	}
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[6:], &obj)
+		if err != nil {
+			return nil, err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return nil, err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(payload[6:], msg)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+
+}
+
+func (s *Deserializer) retryGetSubjects(payload []byte, subjects []string, topicMFQNValue string) ([]string, error) {
+	payload[5] = 1
+	infoLast, err := s.GetSchema("", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range infoLast.Subject {
+		if topicMFQNValue == s {
+			subjects = append(subjects, s)
+			break
+		}
+	}
+
+	return infoLast.Subject, nil
 }
 
 // DeserializeRecordName deserialise bytes
@@ -356,12 +440,35 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 	}
 	name := data["name"].(string)
 	namespace := data["namespace"].(string)
-	fullyQualifiedName := fmt.Sprintf("%s.%s", namespace, name)
+	msgFullyQlfName := fmt.Sprintf("%s.%s", namespace, name)
+
+	msgFullyQlfNameValue, err := s.SubjectNameStrategy("", s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return nil, err
+	}
+
+	var subjects []string
+	for _, s := range info.Subject {
+		if s == msgFullyQlfNameValue {
+			subjects = append(subjects, s)
+			break
+		}
+	}
+	if len(subjects) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, subjects, msgFullyQlfNameValue)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return nil, fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+		}
+	}
 
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -375,18 +482,12 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 		}
 	}
 
-	subject, err := s.SubjectNameStrategy(fullyQualifiedName, s.SerdeType, info)
+	msg, err := s.MessageFactory(subjects, msgFullyQlfName)
 	if err != nil {
 		return nil, err
 	}
 
-	var subjects = []string{subject}
-	msg, err := s.MessageFactory(subjects, fullyQualifiedName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +496,76 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 
 // DeserializeIntoTopicRecordName deserialize bytes into the map interface{}
 func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, payload []byte) error {
-	return s.DeserializeIntoRecordName(subjects, payload)
+	if payload == nil {
+		return fmt.Errorf("Empty payload")
+	}
+
+	info, err := s.GetSchema("", payload)
+	if err != nil {
+		return err
+	}
+
+	// recreate the fullyQualifiedName
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(info.Schema), &data); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+	}
+
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	msgFullyQlfName := fmt.Sprintf("%s.%s", namespace, name)
+
+	topicMsgFullyQlfNameValue, err := s.SubjectNameStrategy(topic, s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return err
+	}
+
+	// loop on info.Subject to assert the subject name
+	var sub []string
+	for _, v := range info.Subject {
+		if string(v) == topicMsgFullyQlfNameValue {
+			sub = append(sub, v)
+			break
+		}
+	}
+	if len(sub) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, sub, topicMsgFullyQlfNameValue)
+		if err != nil {
+			return err
+		}
+		if len(sub) == 0 {
+			return fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
+		}
+	}
+
+	v, ok := subjects[sub[0]]
+	if !ok {
+		return fmt.Errorf("unfound subject declaration")
+	}
+
+	if s.validate {
+		// Need to unmarshal to pure interface
+		var obj interface{}
+		err = json.Unmarshal(payload[6:], &obj)
+		if err != nil {
+			return err
+		}
+		jschema, err := toJSONSchema(s.Client, info)
+		if err != nil {
+			return err
+		}
+		err = jschema.Validate(obj)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = json.Unmarshal(payload[6:], v)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DeserializeIntoRecordName deserialize bytes into the map interface{}
@@ -415,8 +585,34 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		log.Println("Error unmarshaling JSON:", err)
 	}
 
-	fullyQualifiedName := fmt.Sprintf("%s.%s", data["namespace"].(string), data["name"].(string))
-	v, ok := subjects[fullyQualifiedName]
+	name := data["name"].(string)
+	namespace := data["namespace"].(string)
+	msgFullyQlfName := fmt.Sprintf("%s.%s", namespace, name)
+
+	msgFullyQlfNameValue, err := s.SubjectNameStrategy("", s.SerdeType, msgFullyQlfName)
+	if err != nil {
+		return err
+	}
+
+	var sub []string
+	for _, s := range info.Subject {
+		if s == msgFullyQlfNameValue {
+			sub = append(sub, s)
+			break
+		}
+	}
+	if len(sub) == 0 {
+		// retry with updating the cache
+		_, err = s.retryGetSubjects(payload, sub, msgFullyQlfNameValue)
+		if err != nil {
+			return err
+		}
+		if len(subjects) == 0 {
+			return fmt.Errorf("no subject found for: %v", msgFullyQlfNameValue)
+		}
+	}
+
+	v, ok := subjects[sub[0]]
 	if !ok {
 		return fmt.Errorf("unfound subject declaration")
 	}
@@ -424,7 +620,7 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return err
 		}
@@ -438,12 +634,11 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 		}
 	}
 
-	err = json.Unmarshal(payload[5:], v)
+	err = json.Unmarshal(payload[6:], v)
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
 
 // DeserializeInto implements deserialization of generic data from JSON to the given object
@@ -458,7 +653,7 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 	if s.validate {
 		// Need to unmarshal to pure interface
 		var obj interface{}
-		err = json.Unmarshal(payload[5:], &obj)
+		err = json.Unmarshal(payload[6:], &obj)
 		if err != nil {
 			return err
 		}
@@ -471,7 +666,7 @@ func (s *Deserializer) DeserializeInto(topic string, payload []byte, msg interfa
 			return err
 		}
 	}
-	err = json.Unmarshal(payload[5:], msg)
+	err = json.Unmarshal(payload[6:], msg)
 	if err != nil {
 		return err
 	}

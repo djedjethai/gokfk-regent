@@ -50,15 +50,30 @@ DeserializeIntoTopicRecordName(topic string, subjects map[string]interface{}, pa
 
 * The default MessageFactory() handler can be overridden.
 ```
+// using the name
 deserializer.MessageFactory = RegisterMessageFactory()
-
-// confluent-kafka-go/schemaregistry MessageFactory signature: is func(string, string) (interface{}, error) 
 func RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subjects []string, name string) (interface{}, error) {
 		switch name {
-		case subjectPerson:
+		case "packageName.Person":
 			return &pb.Person{}, nil
-		case subjectAddress:
+		case "packageName.Address":
+			return &pb.Address{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+// using the subject
+deserializer.MessageFactory = RegisterMessageFactoryOnSubject()
+func RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subjects []string, name string) (interface{}, error) {
+		switch subjects[0] {
+		case "topic-packageName.Person-key":
+			return &pb.PersonKey{}, nil
+		case "topic-packageName.Person-value":
+			return &pb.Person{}, nil
+		case "anotherTopic-packageName.Address-value":
 			return &pb.Address{}, nil
 		}
 		return nil, errors.New("No matching receiver")
@@ -72,7 +87,6 @@ func RegisterMessageFactory() func([]string, string) (interface{}, error) {
 /*
 * ===============================
 * PRODUCER
-* from serverA
 * ===============================
 **/
 w := &kafka.Writer{
@@ -97,7 +111,9 @@ if err != nil {
 	return nil, err
 }
 
-// write Person to topic 
+// Write a Person to the topic "topic-personPackage.Person."
+// The use of "topic-personPackage.Person" is optional but useful, as it asserts the subject's message.
+// It can also be used for "topic-personPackage.Person-key" or "topic-personPackage.Person-value."
 payload, err := s.SerializeTopicRecordName(topic, msg, "topic-personPackage.Person")
 if err != nil {
 	return err
@@ -112,55 +128,10 @@ if err != nil {
 	return err
 }
 
-/*
-* ===============================
-* PRODUCER
-* from serverB
-* ===============================
-**/
-w := &kafka.Writer{
-	Addr:     kafka.TCP(kafkaURL),
-	Topic:    secondTopic,
-	Balancer: &kafka.LeastBytes{},
-}
-
-
-// different Person type from the previous service, but same package name & type name
-msg := &pb.Person{
-	Country: "England",
-	Job:  "Doctor",
-}
-
-c, err := schemaregistry.NewClient(schemaregistry.NewConfig(srURL))
-if err != nil {
-	return nil, err
-}
-
-s, err := protobuf.NewSerializer(c, serde.ValueSerde, protobuf.NewSerializerConfig())
-if err != nil {
-	return nil, err
-}
-
-// write Person to topic, fullyQualifiedName is optional 
-// payload, err := s.SerializeTopicRecordName(secondTopic, msg) // gokfk-regent will set the topic
-payload, err := s.SerializeTopicRecordName(secondTopic, msg, "secondTopic-personPackage.Person")
-if err != nil {
-	return err
-}
-kfkmsg := kafka.Message{
-    Key:   []byte(key),
-    Value: payload,
-}
-err = w.WriteMessages(context.Background(), kfkmsg)
-if err != nil {
-	fmt.Println(err)
-	return err
-}
 
 /*
 * ===============================
 * CONSUMER
-* serverC
 * ===============================
 **/
 rTopic := kafka.NewReader(kafka.ReaderConfig{
@@ -171,15 +142,8 @@ rTopic := kafka.NewReader(kafka.ReaderConfig{
 		MaxBytes: 10e6, // 10MB
 })
 
-rSecondTopic := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  brokers,
-		GroupID:  groupID,
-		Topic:    secondTopic,
-		MinBytes: 10e3, // 10KB
-		MaxBytes: 10e6, // 10MB
-})
 
-sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(srURL))
+sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(schemaRegistryURL))
 if err != nil {
 	return nil, err
 }
@@ -189,24 +153,17 @@ if err != nil {
 	return nil, err
 }
 
-jobType := (&pb.Job{}).ProtoReflect().Type()
+// This is not needed if the default MessageFactory() function is overwritten. See examples for clarification.
+ jobType := (&pb.Job{}).ProtoReflect().Type()
+
 d.ProtoRegistry.RegisterMessage(jobType)
 
 topicMsg, err := rTopic.ReadMessage(context.Background())
 if err != nil {
 	log.Fatalln(err)
 }
+
 msg, err := d.DeserializeTopicRecordName(topic, topicMsg.Value)
-if err != nil {
-	return err
-}
-
-
-secondTopicMsg, err := rSecondTopic.ReadMessage(context.Background())
-if err != nil {
-	log.Fatalln(err)
-}
-msg, err = d.DeserializeTopicRecordName(secondTopic, seconfTopicMsg.Value)
 if err != nil {
 	return err
 }
@@ -233,12 +190,6 @@ msg := &avSch.Person{
 	Age:  23,
 }
 
-// avro namespace is "avroNamespace"
-addr := &avSch.Address{
-	Street: "rue de la soif",
-	City:   "Rennes",
-}
-
 c, err := schemaregistry.NewClient(schemaregistry.NewConfig(schemaRegistryURL))
 if err != nil {
 	log.Fatal("Error schemaRegistry create new client: ", err)
@@ -249,13 +200,8 @@ if err != nil {
 	log.Fatal("Error creating the serializer: ", err)
 }
 
-// "avroNamespace" is optional, it only assert that the msg's namespace is the expected one
+// The use of "avroNamespace.Person" is optional but useful, as it asserts the subject's message.
 payloadMsg, err := s.SerializeRecordName(&msg, "avroNamespace.Person")
-if err != nil {
-	log.Println("Error serializing the msg")
-}
-
-payloadAddr, err := s.SerializeRecordName(&addr)
 if err != nil {
 	log.Println("Error serializing the msg")
 }
@@ -272,17 +218,6 @@ if err != nil {
     fmt.Printf("Failed to produce message: %v\n", err)
 }
 
-msgOK = &kafka.Message{
-	TopicPartition: kafka.TopicPartition{
-		Topic:     &topic,
-		Partition: kafka.PartitionAny},
-	Value: payloadAddr}
-
-// Produce the message
-err = producer.Produce(msgOK, nil)
-if err != nil {
-    fmt.Printf("Failed to produce message: %v\n", err)
-}
 /*
 * ===============================
 * CONSUMER
@@ -302,7 +237,7 @@ if err := c.SubscribeTopics([]string{topic}, nil); err != nil {
     return err
 }
 
-sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(srURL))
+sr, err := schemaregistry.NewClient(schemaregistry.NewConfig(schemaRegistryURL))
 if err != nil {
 	return nil, err
 }
@@ -314,11 +249,8 @@ if err != nil {
 
 ref := make(map[string]interface{})
 px := avSch.Person{}
-addr := avSch.Address{}
 msgFQN := "avroNamespace.Person"
-addrFQN := "avroNamespace.Address"
 ref[msgFQN] = &px
-ref[addrFQN] = &addr
 
 for {
 	kafkaMsg, err := c.ReadMessage(noTimeout)
@@ -332,7 +264,6 @@ for {
 		return err
 	}
 	fmt.Println("See the Person struct: ", px.Name, " - ", px.Age)
-	fmt.Println("See the Address struct: ", addr.Street, " - ", addr.City)
 
 	if _, err = c.CommitMessage(kafkaMsg); err != nil {
 		return err
