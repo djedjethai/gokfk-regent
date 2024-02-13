@@ -555,7 +555,7 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 	var subjects []string
 	partsMsg := strings.Split(msgFullyQlfName, ".")
 	if len(partsMsg) > 1 {
-		// we know protobuf have a declared packagename
+		// protobuf have a declared packagename
 		for _, s := range info.Subject {
 			if topicMsgFullyQlfNameValue == s {
 				subjects = append(subjects, s)
@@ -571,7 +571,7 @@ func (s *Deserializer) DeserializeTopicRecordName(topic string, payload []byte) 
 			}
 		}
 	} else {
-		// we know protobuf packagename is undefined
+		// protobuf packagename is undefined
 		// update the cache in any case and return all subjects
 		subjects, err = s.retryGetSubjects(payload, subjects, topicMsgFullyQlfNameValue)
 		if err != nil {
@@ -640,7 +640,7 @@ func (s *Deserializer) DeserializeRecordName(payload []byte) (interface{}, error
 
 	} else {
 		// packagename is not defined, assert it is not possible, return all
-		// NOTE the downside, we do not refresh the cache
+		// NOTE the downside: no cache refresh
 		subjects = infSub
 	}
 
@@ -738,7 +738,7 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 	var sub []string
 	partsMsg := strings.Split(msgFullyQlfName, ".")
 	if len(partsMsg) > 1 {
-		// we know protobuf have a declared packagename
+		// protobuf have a declared packagename
 		for _, s := range info.Subject {
 			if topicMsgFullyQlfNameValue == s {
 				sub = append(sub, s)
@@ -757,7 +757,7 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 			}
 		}
 	} else {
-		// we know protobuf package is undefined
+		// protobuf package is undefined
 		// update the cache in any case and return all subjects
 		sub, err = s.retryGetSubjects(payload, sub, topicMsgFullyQlfNameValue)
 		if err != nil {
@@ -775,13 +775,11 @@ func (s *Deserializer) DeserializeIntoTopicRecordName(topic string, subjects map
 			}
 
 			if lenSubjects == i+1 && err == nil {
-				// err = fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
 				err = fmt.Errorf("unfound subject declaration")
 			}
 		}
 	} else {
 		return fmt.Errorf("unfound subject declaration")
-		// return fmt.Errorf("no subject found for: %v", topicMsgFullyQlfNameValue)
 	}
 	return err
 }
@@ -846,7 +844,7 @@ func (s *Deserializer) DeserializeIntoRecordName(subjects map[string]interface{}
 			}
 		}
 	} else {
-		// NOTE the downside, we do not refresh the cache
+		// NOTE the downside: no cache refresh
 		sub = infSub
 	}
 

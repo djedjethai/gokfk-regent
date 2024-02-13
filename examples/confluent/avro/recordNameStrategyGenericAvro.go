@@ -221,6 +221,20 @@ func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{
 	}
 }
 
+// same as RegisterMessageFactory() but using the subjects
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subjects []string, name string) (interface{}, error) {
+		switch subjects[0] {
+		case "main.Person-value":
+			return &Person{}, nil
+		case "main.Address-value":
+			return &Address{}, nil
+		}
+		return nil, fmt.Errorf("Err RegisterMessageFactory")
+		// return receiver, nil
+	}
+}
+
 // Run consumer
 // func (c *srConsumer) Run(messageType protoreflect.MessageType, topic string) error {
 func (c *srConsumer) Run(topic string) error {

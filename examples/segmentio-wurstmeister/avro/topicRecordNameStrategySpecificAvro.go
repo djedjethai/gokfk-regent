@@ -260,13 +260,29 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
 		switch name {
-		case fmt.Sprintf("my-topic-%s", personFQN):
+		case personFQN:
 			return &avSch.Person{}, nil
-		case fmt.Sprintf("my-topic-%s", addressFQN):
+		case addressFQN:
 			return &avSch.Address{}, nil
-		case fmt.Sprintf("my-second-%s", addressFQN):
+		case "schemas.Job":
+			// as Job schema have no namespace, gokfk-regent refere to the Go fqn
+			return &avSch.Job{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+// same as RegisterMessageFactory() but use the subject
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		switch subject[0] {
+		case fmt.Sprintf("my-topic-%s-value", personFQN):
+			return &avSch.Person{}, nil
+		case fmt.Sprintf("my-topic-%s-value", addressFQN):
 			return &avSch.Address{}, nil
-		case "my-second-schemas.Job":
+		case fmt.Sprintf("my-second-%s-value", addressFQN):
+			return &avSch.Address{}, nil
+		case "my-second-schemas.Job-value":
 			// as Job schema have no namespace, gokfk-regent refere to the Go fqn
 			return &avSch.Job{}, nil
 		}

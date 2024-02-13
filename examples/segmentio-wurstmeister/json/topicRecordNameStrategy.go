@@ -254,12 +254,23 @@ func NewConsumer(kafkaURL, srURL string) (SRConsumer, error) {
 // RegisterMessageFactory will overwrite the default one
 func (c *srConsumer) RegisterMessageFactory() func([]string, string) (interface{}, error) {
 	return func(subject []string, name string) (interface{}, error) {
-		fmt.Println("The subject: ", subject)
-		fmt.Println("The Name: ", name)
 		switch name {
 		case "main.Person":
 			return &Person{}, nil
 		case "main.Address":
+			return &Address{}, nil
+		}
+		return nil, errors.New("No matching receiver")
+	}
+}
+
+// same as RegisterMessageFactory() but using subject
+func (c *srConsumer) RegisterMessageFactoryOnSubject() func([]string, string) (interface{}, error) {
+	return func(subject []string, name string) (interface{}, error) {
+		switch subject[0] {
+		case "my-topic-main.Person-value", "my-second-main.Person-value":
+			return &Person{}, nil
+		case "my-topic-main.Address-value", "my-second-main.Address-value":
 			return &Address{}, nil
 		}
 		return nil, errors.New("No matching receiver")
