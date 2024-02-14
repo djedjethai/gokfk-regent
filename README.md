@@ -273,7 +273,11 @@ for {
 
 
 ## Contributing
+
 "Welcome to gokfk-regent! If you feel that it can be improved, please feel free to submit a pull request (PR)."
+
+### To-Do
+* The TLS implementation for the Schema Registry connection has been put in place, but it is currently encountering issues.
 
 License
 =======

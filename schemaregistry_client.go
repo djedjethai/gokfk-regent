@@ -326,7 +326,6 @@ func (c *client) Register(subject string, schema SchemaInfo, normalize bool) (id
 		} else {
 			metadata.ID = -1
 		}
-		fmt.Println("SR_client register update the cache................")
 		fromSR = 1
 	} else {
 		metadata.ID = idValue.(int)
@@ -349,7 +348,6 @@ func (c *client) reqSchemaRegistryMetadataFromID(id int, cacheKey subjectOnlyID,
 		var response []string
 		err = c.restService.handleRequest(newRequest("GET", getSubject, nil, id), &response)
 		if err == nil {
-			fmt.Println("sr_client GetByID cache response from SR..............: ", response)
 			newInfo.Subject = response
 			return err
 		} else {
@@ -368,7 +366,6 @@ func (c *client) GetByID(id, fromSR int) (schema SchemaInfo, err error) {
 	newInfo := &SchemaInfo{}
 
 	// if producer got the schemaID from the SR, update the cache
-	fmt.Println("SR_client GetByID seeee fromSR===========: ", fromSR)
 	if fromSR == 1 {
 		c.idToSchemaCacheLock.Lock()
 		err = c.reqSchemaRegistryMetadataFromID(id, cacheKey, newInfo)
@@ -430,7 +427,7 @@ func (c *client) GetBySubjectAndID(subject string, id int) (schema SchemaInfo, e
 		if len(subject) > 0 {
 			err = c.restService.handleRequest(newRequest("GET", schemasBySubject, nil, id, url.QueryEscape(subject)), &metadata)
 		} else {
-			// NOTE kind of useless... see to remove that
+			// NOTE kind of useless... maybe remove that
 			err = c.restService.handleRequest(newRequest("GET", schemas, nil, id), &metadata)
 		}
 		if err == nil {
