@@ -1,10 +1,13 @@
 # gokfk-regent: A Comprehensive Go Kafka Schema Registry Client
 
-**gokfk-regent** gok(a)fk(a)-reg(istry-cli)ent, is a Go Kafka Schema Registry Client that encompasses all strategies, including TopicName, RecordName, and TopicRecordName.
+**gokfk-regent** gok(a)fk(a)-reg(istry-cli)ent, is a Go Kafka Schema Registry Client that encompasses all strategies, including Topic Name, Record Name, and Topic Record Name.
 
-It is a fork of Confluent-kafka-go's SchemaRegistry, inheriting the Topic-Name-Strategy implementation while introducing the Record-Name-Strategy and Topic-Record-Name-Strategy, which are currently missing in the original client. This fork is tailored to users with specific functionality requirements, elevating their experience with Apache Kafka.
+It's a fork of Confluent-kafka-go's SchemaRegistry, inheriting the Topic Name Strategy and introducing the Record Name Strategy and Topic Record Name Strategy, currently absent in the original client. This implementation enables Go developers to leverage these strategies.
 
-As an agile open-source project, we prioritize flexibility, allowing for rapid development, and warmly welcome contributions from the community.
+As an open-source project, we prioritize flexibility, allowing for rapid development, and warmly welcome contributions from the community.
+
+Find a detailed presentation of the project [here](https://medium.com/@djedjethai/go-client-for-the-kafka-schema-registry-gokfk-regent-c8b9f534b090).
+
 
 ## Explore the Examples Section
 * Full implementations using gokfk-regent, confluentinc images, and confluent-kafka-go/kafka client
@@ -276,8 +279,6 @@ for {
 
 "Welcome to gokfk-regent! If you feel that it can be improved, please feel free to submit a pull request (PR)."
 
-### To-Do
-* The TLS implementation for the Schema Registry connection has been put in place, but it is currently encountering issues.
 
 License
 =======
